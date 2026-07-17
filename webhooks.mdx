@@ -11,7 +11,7 @@ Webhooks push a signed copy of every state-changing event to an endpoint you con
 Create a webhook endpoint with the URL to deliver to and the events you want. The response includes a `signing_secret` used to verify deliveries.
 
 ```bash
-curl -X POST https://ledger.southpay.io/api/v1/webhook_endpoints \
+curl -X POST https://api.kordio.io/v1/webhook_endpoints \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -67,7 +67,7 @@ Ingestion itself emits no per-row events; a 10k-row batch would flood the stream
 
 ## Verify the signature
 
-Each delivery includes a `Southpay-Signature` header (Kordio runs on SouthPay ledger infrastructure, so signature headers keep the `Southpay-` prefix). The signature is an HMAC-SHA256 over the string `<timestamp>.<raw_body>`, keyed by your endpoint's signing secret:
+Each delivery includes a `Kordio-Signature` header. The signature is an HMAC-SHA256 over the string `<timestamp>.<raw_body>`, keyed by your endpoint's signing secret:
 
 ```
 signature = HMAC-SHA256(signing_secret, "<timestamp>.<raw_body>")
@@ -101,7 +101,7 @@ app.post(
   "/webhooks/kordio",
   express.raw({ type: "application/json" }),
   (req, res) => {
-    const sig = req.headers["southpay-signature"] as string;
+    const sig = req.headers["kordio-signature"] as string;
     const secret = process.env.LEDGER_WEBHOOK_SECRET!;
     if (!verifySignature(req.body.toString(), sig, secret)) {
       return res.status(401).json({ error: "invalid signature" });
@@ -133,7 +133,7 @@ def verify_signature(raw_body: bytes, header: str, secret: str) -> bool:
 
 @app.post("/webhooks/kordio")
 def webhook():
-    sig = request.headers.get("Southpay-Signature", "")
+    sig = request.headers.get("Kordio-Signature", "")
     secret = os.environ["LEDGER_WEBHOOK_SECRET"]
     if not verify_signature(request.data, sig, secret):
         return jsonify(error="invalid signature"), 401
@@ -166,7 +166,7 @@ You can inspect deliveries for an endpoint, count failures, redeliver a specific
 Every state-changing operation also lands in the durable events log, with the same payloads webhooks deliver. If an endpoint was down or you need to backfill, pull from the tail instead of relying on retries.
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/events?type=transaction.created&since=24h" \
+curl "https://api.kordio.io/v1/events?type=transaction.created&since=24h" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

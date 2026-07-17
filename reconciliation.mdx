@@ -20,14 +20,14 @@ A balance is not a stored number that someone could have edited. It is derived f
 List the postings on the account:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/accounts/cash:usd/postings" \
+curl "https://api.kordio.io/v1/accounts/cash:usd/postings" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 For a period view with opening and closing balances around the same postings, use the account statement:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/accounts/cash:usd/statement?from=2026-04-01T00:00:00Z&to=2026-05-01T00:00:00Z" \
+curl "https://api.kordio.io/v1/accounts/cash:usd/statement?from=2026-04-01T00:00:00Z&to=2026-05-01T00:00:00Z" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -40,7 +40,7 @@ Every posting belongs to exactly one transaction. The postings list and the acco
 Fetch the transaction to see all of its legs, its metadata, and any reversal links:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/transactions/{id}" \
+curl "https://api.kordio.io/v1/transactions/{id}" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -51,14 +51,14 @@ Because corrections are new transactions rather than edits, a reversed or refund
 The account statement is the per-account answer. It bounds the postings by `value_date`, so a point-in-time question gets a point-in-time answer: the result is computed from when each movement was economically effective, not from when the row was inserted.
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/accounts/cash:usd/statement?from=2026-04-01T00:00:00Z&to=2026-04-15T00:00:00Z" \
+curl "https://api.kordio.io/v1/accounts/cash:usd/statement?from=2026-04-01T00:00:00Z&to=2026-04-15T00:00:00Z" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 For a tenant-wide, replayable view of everything that changed, read the durable events tail:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/events" \
+curl "https://api.kordio.io/v1/events" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -69,7 +69,7 @@ Every successful write emits an event, and the events list is replayable, so a c
 This is reconciliation proper: comparing your ledger against an external source of truth, such as an external processor or your bank statement. You bring a snapshot of external items, and the ledger matches them against your unreconciled postings.
 
 ```bash
-curl -X POST "https://ledger.southpay.io/api/v1/reconciliation_runs" \
+curl -X POST "https://api.kordio.io/v1/reconciliation_runs" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -93,7 +93,7 @@ Matching is per currency and per amount within a time window. The response surfa
 Runs are replayable. Items are stored as external transactions keyed by `(source, external_id)`, so matched postings are marked once. A re-run of the same snapshot reports already-matched items in `matched` with their original attribution; nothing is double-marked. Fetch a past run with its full snapshot:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/reconciliation_runs/{id}" \
+curl "https://api.kordio.io/v1/reconciliation_runs/{id}" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -102,17 +102,17 @@ curl "https://ledger.southpay.io/api/v1/reconciliation_runs/{id}" \
 Inline snapshots work for one-off checks. For a recurring feed, create a source and ingest rows once; they persist with a status (`open`, `matched`, `ignored`) and `GET /v1/external_transactions?status=open` is your break list across runs.
 
 ```bash
-curl -X POST "https://ledger.southpay.io/api/v1/sources" \
+curl -X POST "https://api.kordio.io/v1/sources" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "name": "stripe", "default_window_seconds": 86400 }'
 
-curl -X POST "https://ledger.southpay.io/api/v1/sources/{id}/external_transactions" \
+curl -X POST "https://api.kordio.io/v1/sources/{id}/external_transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "items": [ { "external_id": "txn_1OqIJq", "amount": "1000000", "currency": "USD", "occurred_at": "2026-05-14T09:00:00Z" } ] }'
 
-curl -X POST "https://ledger.southpay.io/api/v1/sources/{id}/reconciliation_runs" \
+curl -X POST "https://api.kordio.io/v1/sources/{id}/reconciliation_runs" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "from": "2026-05-14T00:00:00Z", "to": "2026-05-15T00:00:00Z" }'
@@ -127,7 +127,7 @@ See [Feeds](/feeds) for the full workflow, the hosted inbound push endpoint, and
 For the comparison basis itself, the reports endpoints give you ledger-side totals to check against the external figures. Use the trial balance for per-currency debit and credit totals across every account:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/reports/trial_balance?at=2026-05-14T23:59:59Z" \
+curl "https://api.kordio.io/v1/reports/trial_balance?at=2026-05-14T23:59:59Z" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

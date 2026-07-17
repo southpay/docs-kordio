@@ -46,7 +46,7 @@ Transaction `metadata` is the one mutable surface, changed with `PATCH /v1/trans
 Every write accepts an `Idempotency-Key` header. The key, scoped to your ledger, maps to exactly one transaction forever. Replaying a request with the same key returns the original transaction (with a `200`) instead of writing a duplicate.
 
 ```bash
-curl -X POST https://ledger.southpay.io/api/v1/transactions \
+curl -X POST https://api.kordio.io/v1/transactions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: invoice_001" \
@@ -72,7 +72,7 @@ Each posting has a `value_date`: the instant the movement is economically effect
 Read a historical balance by passing `?at=<ISO 8601 timestamp>` on the balance endpoint:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/accounts/cash:usd/balance?at=2026-04-15T00:00:00Z" \
+curl "https://api.kordio.io/v1/accounts/cash:usd/balance?at=2026-04-15T00:00:00Z" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

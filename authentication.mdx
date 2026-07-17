@@ -13,13 +13,13 @@ Authenticate to the token endpoint with your `client_id` and `client_secret`. Yo
 <CodeGroup>
 
 ```bash HTTP Basic
-curl -X POST https://ledger.southpay.io/oauth/token \
+curl -X POST https://api.kordio.io/oauth/token \
   -u "$CLIENT_ID:$CLIENT_SECRET" \
   -d 'grant_type=client_credentials&scope=ledger:read ledger:write'
 ```
 
 ```bash Form body
-curl -X POST https://ledger.southpay.io/oauth/token \
+curl -X POST https://api.kordio.io/oauth/token \
   -d 'grant_type=client_credentials' \
   -d "client_id=$CLIENT_ID" \
   -d "client_secret=$CLIENT_SECRET" \
@@ -42,7 +42,7 @@ The response is an HS256 JWT valid for one hour:
 Send it as a Bearer token on every request:
 
 ```bash
-curl https://ledger.southpay.io/api/v1/accounts \
+curl https://api.kordio.io/v1/accounts \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -76,19 +76,19 @@ There is no `?test=` query flag. To work in test mode, use a token minted from a
 The authorization server publishes its metadata at a well-known path so tooling can discover the token endpoint, grant types, scopes, and signing algorithms automatically.
 
 ```bash
-curl https://ledger.southpay.io/.well-known/oauth-authorization-server
+curl https://api.kordio.io/.well-known/oauth-authorization-server
 ```
 
 ```json
 {
-  "issuer": "https://ledger.southpay.io",
-  "token_endpoint": "https://ledger.southpay.io/oauth/token",
+  "issuer": "https://api.kordio.io",
+  "token_endpoint": "https://api.kordio.io/oauth/token",
   "grant_types_supported": ["client_credentials"],
   "response_types_supported": ["token"],
   "scopes_supported": ["ledger:read", "ledger:write"],
   "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post"],
   "token_endpoint_auth_signing_alg_values_supported": ["HS256"],
-  "service_documentation": "https://docs.southpay.io/ledger/auth"
+  "service_documentation": "https://docs.kordio.io/auth"
 }
 ```
 

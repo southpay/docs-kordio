@@ -7,7 +7,7 @@ description: "Mint a token, create two accounts, post a balanced transaction, an
 This walkthrough takes you from credentials to a posted transaction in four `curl` calls. Each call matches the [API reference](/api-reference/introduction).
 
 <Info>
-  The base URL is `https://ledger.southpay.io/api`; Kordio is powered by SouthPay, so the API lives on the SouthPay domain. OAuth lives at `/oauth/token`; the ledger resources live under `/v1`.
+  The base URL is `https://api.kordio.io`. OAuth lives at `/oauth/token`; the ledger resources live under `/v1`.
 </Info>
 
 ## 1. Get your client credentials
@@ -24,7 +24,7 @@ export CLIENT_SECRET="sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 Exchange your credentials for a short-lived token using the `client_credentials` grant. Send the credentials as HTTP Basic auth.
 
 ```bash
-curl -X POST https://ledger.southpay.io/oauth/token \
+curl -X POST https://api.kordio.io/oauth/token \
   -u "$CLIENT_ID:$CLIENT_SECRET" \
   -d 'grant_type=client_credentials&scope=ledger:read ledger:write'
 ```
@@ -53,12 +53,12 @@ The token carries your tenant, mode, and scopes. There is no `?test=` flag: the 
 An account is a named bucket of value in one currency. You choose the `id`. Create one asset account and one revenue account, both in `USD`.
 
 ```bash
-curl -X POST https://ledger.southpay.io/api/v1/accounts \
+curl -X POST https://api.kordio.io/v1/accounts \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"id":"cash:usd","name":"Cash","type":"asset","currency":"USD"}'
 
-curl -X POST https://ledger.southpay.io/api/v1/accounts \
+curl -X POST https://api.kordio.io/v1/accounts \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"id":"revenue:subscriptions","name":"Subscriptions","type":"revenue","currency":"USD"}'
@@ -89,7 +89,7 @@ Each call returns the created account inside the standard envelope:
 A transaction is a set of postings that balance per currency. Move 10.00 USD (`1000` minor units) from cash into revenue. Writes require an `Idempotency-Key` so retries never double-post.
 
 ```bash
-curl -X POST https://ledger.southpay.io/api/v1/transactions \
+curl -X POST https://api.kordio.io/v1/transactions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: invoice_001" \
@@ -128,7 +128,7 @@ Replaying the same `Idempotency-Key` returns this same transaction with a `200` 
 Read the cash account's balance:
 
 ```bash
-curl https://ledger.southpay.io/api/v1/accounts/cash:usd/balance \
+curl https://api.kordio.io/v1/accounts/cash:usd/balance \
   -H "Authorization: Bearer $TOKEN"
 ```
 

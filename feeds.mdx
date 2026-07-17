@@ -14,7 +14,7 @@ The ledger never connects to your providers and never holds their credentials. Y
 ## Create a source
 
 ```bash
-curl -X POST "https://ledger.southpay.io/api/v1/sources" \
+curl -X POST "https://api.kordio.io/v1/sources" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -31,7 +31,7 @@ Names are unique per ledger and lowercased. `default_account_id` scopes matching
 ## Ingest rows
 
 ```bash
-curl -X POST "https://ledger.southpay.io/api/v1/sources/{id}/external_transactions" \
+curl -X POST "https://api.kordio.io/v1/sources/{id}/external_transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -57,7 +57,7 @@ Up to 1000 items per request. Ingestion is idempotent on `(source, external_id)`
 ## Run reconciliation per source
 
 ```bash
-curl -X POST "https://ledger.southpay.io/api/v1/sources/{id}/reconciliation_runs" \
+curl -X POST "https://api.kordio.io/v1/sources/{id}/reconciliation_runs" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "from": "2026-05-14T00:00:00Z", "to": "2026-05-15T00:00:00Z" }'
@@ -70,7 +70,7 @@ Runs with at most 500 open rows execute synchronously and return the full result
 ## Work the break queue
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/external_transactions?status=open&source_id={id}" \
+curl "https://api.kordio.io/v1/external_transactions?status=open&source_id={id}" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -87,7 +87,7 @@ curl "https://ledger.southpay.io/api/v1/external_transactions?status=open&source
 Instead of polling and pushing from a cron, mint a per-source push URL:
 
 ```bash
-curl -X POST "https://ledger.southpay.io/api/v1/sources/{id}/inbound" \
+curl -X POST "https://api.kordio.io/v1/sources/{id}/inbound" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -100,7 +100,7 @@ SIG=$(printf '%s.%s' "$T" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex | 
 
 curl -X POST "$INBOUND_URL" \
   -H "Content-Type: application/json" \
-  -H "Southpay-Inbound-Signature: t=$T,v1=$SIG" \
+  -H "Kordio-Inbound-Signature: t=$T,v1=$SIG" \
   -d "$BODY"
 ```
 
@@ -113,7 +113,7 @@ Re-posting to the enable endpoint is idempotent and keeps the existing URL. Pass
 Create the source with `kind: "cobo"` and Cobo's webhook public key, then paste the `inbound_url` into the Cobo console as a webhook endpoint. No signing secret is involved; the endpoint verifies Cobo's Ed25519 signature (`BIZ-TIMESTAMP` and `BIZ-RESP-SIGNATURE` headers) against the key.
 
 ```bash
-curl -X POST "https://ledger.southpay.io/api/v1/sources" \
+curl -X POST "https://api.kordio.io/v1/sources" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -143,7 +143,7 @@ jq '{items: [.data[] | {
   reference_value: .source,
   raw: {fee: .fee, type: .type}
 }]}' |
-curl -X POST "https://ledger.southpay.io/api/v1/sources/{id}/external_transactions" \
+curl -X POST "https://api.kordio.io/v1/sources/{id}/external_transactions" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d @-

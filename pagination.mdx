@@ -28,11 +28,11 @@ Lists paginate with opaque cursors. Request a page, and if `has_more` is `true`,
 
 ```bash
 # First page
-curl "https://ledger.southpay.io/api/v1/transactions?limit=50" \
+curl "https://api.kordio.io/v1/transactions?limit=50" \
   -H "Authorization: Bearer $TOKEN"
 
 # Next page
-curl "https://ledger.southpay.io/api/v1/transactions?limit=50&cursor=<next_cursor>" \
+curl "https://api.kordio.io/v1/transactions?limit=50&cursor=<next_cursor>" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -47,7 +47,7 @@ A typical loop:
 ```bash
 cursor=""
 while :; do
-  page=$(curl -s "https://ledger.southpay.io/api/v1/transactions?limit=200&cursor=$cursor" \
+  page=$(curl -s "https://api.kordio.io/v1/transactions?limit=200&cursor=$cursor" \
     -H "Authorization: Bearer $TOKEN")
   # process page.data
   has_more=$(echo "$page" | jq -r '.has_more')
@@ -61,7 +61,7 @@ done
 List endpoints accept filters in the query string. The available filters depend on the resource. For example, list transactions by metadata:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/transactions?metadata[invoice]=inv_8721" \
+curl "https://api.kordio.io/v1/transactions?metadata[invoice]=inv_8721" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -79,7 +79,7 @@ By default, a transaction's postings reference their account by `id`. Use `?expa
 `expand` is a comma-separated list:
 
 ```bash
-curl "https://ledger.southpay.io/api/v1/transactions/3061ec4e-c959-49ba-a0f6-99186a7bd5d8?expand=postings.account,balances" \
+curl "https://api.kordio.io/v1/transactions/3061ec4e-c959-49ba-a0f6-99186a7bd5d8?expand=postings.account,balances" \
   -H "Authorization: Bearer $TOKEN"
 ```
 

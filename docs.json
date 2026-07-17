@@ -7,7 +7,10 @@
     "light": "#2fa79e",
     "dark": "#0a5f5a"
   },
-  "favicon": "/favicon.svg",
+  "favicon": {
+    "light": "/favicon/light.png",
+    "dark": "/favicon/dark.png"
+  },
   "icons": {
     "library": "lucide"
   },
@@ -79,8 +82,7 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/southpay",
-      "linkedin": "https://linkedin.com/company/southpay"
+      "linkedin": "https://www.linkedin.com/company/kordio/"
     }
   },
   "navigation": {

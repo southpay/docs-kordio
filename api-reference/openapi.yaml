@@ -12,20 +12,20 @@ info:
 
     ```bash
     # 1. Get an access token (client_credentials)
-    curl -X POST https://ledger.southpay.io/oauth/token \
+    curl -X POST https://api.kordio.io/oauth/token \
       -u "$CLIENT_ID:$CLIENT_SECRET" \
       -d 'grant_type=client_credentials&scope=ledger:read ledger:write'
 
     # 2. Create two accounts (token from step 1)
-    curl -X POST https://ledger.southpay.io/api/v1/accounts \
+    curl -X POST https://api.kordio.io/v1/accounts \
       -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
       -d '{"id":"cash:usd","name":"Cash","type":"asset","currency":"USD"}'
-    curl -X POST https://ledger.southpay.io/api/v1/accounts \
+    curl -X POST https://api.kordio.io/v1/accounts \
       -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
       -d '{"id":"revenue:subscriptions","name":"Subscriptions","type":"revenue","currency":"USD"}'
 
     # 3. Post a balanced transaction
-    curl -X POST https://ledger.southpay.io/api/v1/transactions \
+    curl -X POST https://api.kordio.io/v1/transactions \
       -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
       -H "Idempotency-Key: invoice_001" \
       -d '{"postings":[
@@ -105,10 +105,10 @@ info:
     url: https://docs.kordio.io
   license:
     name: Proprietary
-    url: https://ledger.southpay.io/legal/terms
+    url: https://kordio.io/terms-and-conditions
 
 servers:
-  - url: https://ledger.southpay.io/api
+  - url: https://api.kordio.io
     description: Production
   - url: http://localhost:4000/api
     description: Local development
@@ -146,7 +146,7 @@ tags:
     description: |
       Endpoints that receive signed event payloads. Signatures are
       `HMAC-SHA256(secret, "<timestamp>.<raw_body>")` carried in the
-      `Southpay-Signature` header.
+      `Kordio-Signature` header.
 
       A delivery is considered successful on any 2xx response. Failures
       (non-2xx, timeout, or network error) are retried with exponential
@@ -307,7 +307,7 @@ components:
                   code: not_found
                   message: account not found
                   param: id
-                  docs_url: https://docs.southpay.io/ledger/errors#not_found
+                  docs_url: https://docs.kordio.io/errors#not_found
 
     Unbalanced:
       description: The transaction does not balance per currency.
@@ -323,7 +323,7 @@ components:
                   hint: "USDC: add 9700 of credits or remove 9700 of debits"
                   details:
                     by_currency: { USDC: "9700" }
-                  docs_url: https://docs.southpay.io/ledger/errors#unbalanced
+                  docs_url: https://docs.kordio.io/errors#unbalanced
 
     Immutable:
       description: A non-metadata field cannot be updated.
@@ -338,7 +338,7 @@ components:
                   message: field cannot be updated
                   param: postings
                   hint: only metadata is mutable; write a reversal to undo a transaction
-                  docs_url: https://docs.southpay.io/ledger/errors#immutable_field
+                  docs_url: https://docs.kordio.io/errors#immutable_field
 
     InsufficientScope:
       description: The token is valid but lacks the scope this endpoint needs.
@@ -356,7 +356,7 @@ components:
                   code: insufficient_scope
                   message: this endpoint requires the 'ledger:write' scope
                   hint: request a token with `scope=ledger:write` from POST /oauth/token
-                  docs_url: https://docs.southpay.io/ledger/errors#insufficient_scope
+                  docs_url: https://docs.kordio.io/errors#insufficient_scope
 
   schemas:
 
@@ -1062,7 +1062,7 @@ components:
                 Outgoing request headers as sent to the integrator's
                 endpoint. Sensitive headers (`authorization`, `*secret*`,
                 `cookie`) are redacted to `[redacted]`. The
-                `Southpay-Signature` header is preserved because it's an
+                `Kordio-Signature` header is preserved because it's an
                 HMAC value, not a key.
             request_body: { type: string, nullable: true }
             response_status: { type: integer, nullable: true }
@@ -1324,14 +1324,14 @@ paths:
               examples:
                 default:
                   value:
-                    issuer: https://ledger.southpay.io
-                    token_endpoint: https://ledger.southpay.io/oauth/token
+                    issuer: https://api.kordio.io
+                    token_endpoint: https://api.kordio.io/oauth/token
                     grant_types_supported: [client_credentials]
                     response_types_supported: [token]
                     scopes_supported: [ledger:read, ledger:write]
                     token_endpoint_auth_methods_supported: [client_secret_basic, client_secret_post]
                     token_endpoint_auth_signing_alg_values_supported: [HS256]
-                    service_documentation: https://docs.southpay.io/ledger/auth
+                    service_documentation: https://docs.kordio.io/auth
 
   # ===========================================================================
   # Authentication
@@ -1513,7 +1513,7 @@ paths:
                       message: an account with this id already exists
                       param: id
                       hint: pick a different id, or PATCH the existing account to update its metadata
-                      docs_url: https://docs.southpay.io/ledger/errors#already_exists
+                      docs_url: https://docs.kordio.io/errors#already_exists
         "422":
           description: invalid_request (missing or malformed fields).
           content:
@@ -1527,7 +1527,7 @@ paths:
                       message: account is invalid
                       hint: name is required and must be a non-empty string
                       details: { fields: { name: ["can't be blank"] } }
-                      docs_url: https://docs.southpay.io/ledger/errors#invalid_request
+                      docs_url: https://docs.kordio.io/errors#invalid_request
 
   /v1/accounts/{id}:
     get:
@@ -1978,7 +1978,7 @@ paths:
                       code: invalid_request
                       message: the ledger is append-only
                       hint: "to undo a transaction, POST /v1/transactions/:id/reverse"
-                      docs_url: https://docs.southpay.io/ledger/errors#invalid_request
+                      docs_url: https://docs.kordio.io/errors#invalid_request
 
   /v1/transactions/{id}/reverse:
     post:
@@ -2014,7 +2014,7 @@ paths:
                       message: transaction already has a reversal
                       param: id
                       hint: fetch the existing reversal via GET /v1/transactions/:id and inspect reversed_by
-                      docs_url: https://docs.southpay.io/ledger/errors#already_reversed
+                      docs_url: https://docs.kordio.io/errors#already_reversed
 
   /v1/transactions/{id}/commit:
     post:
@@ -2123,14 +2123,14 @@ paths:
                       code: partial_refund_exceeds_original
                       message: refund amount exceeds the remaining refundable amount
                       hint: fetch the original via GET /v1/transactions/:id to see the remaining refundable balance
-                      docs_url: https://docs.southpay.io/ledger/errors#partial_refund_exceeds_original
+                      docs_url: https://docs.kordio.io/errors#partial_refund_exceeds_original
                 currency_required:
                   value:
                     error:
                       code: refund_currency_required
                       message: currency is required when the original has postings in multiple currencies
                       hint: "pass `currency` matching one of: USDC, BTC"
-                      docs_url: https://docs.southpay.io/ledger/errors#refund_currency_required
+                      docs_url: https://docs.kordio.io/errors#refund_currency_required
 
   # ===========================================================================
   # Reserves
@@ -2189,19 +2189,19 @@ paths:
                     error:
                       code: reserve_insufficient_funds
                       message: the source account would exceed its overdraft policy
-                      docs_url: https://docs.southpay.io/ledger/errors#reserve_insufficient_funds
+                      docs_url: https://docs.kordio.io/errors#reserve_insufficient_funds
                 currency_mismatch:
                   value:
                     error:
                       code: reserve_currency_mismatch
                       message: currency does not match
-                      docs_url: https://docs.southpay.io/ledger/errors#reserve_currency_mismatch
+                      docs_url: https://docs.kordio.io/errors#reserve_currency_mismatch
                 template_unknown:
                   value:
                     error:
                       code: account_template_unknown
                       message: template not found in this ledger
-                      docs_url: https://docs.southpay.io/ledger/errors#account_template_unknown
+                      docs_url: https://docs.kordio.io/errors#account_template_unknown
 
   /v1/reserves/{id}/release:
     post:
@@ -2241,7 +2241,7 @@ paths:
                     error:
                       code: reserve_release_exceeds_balance
                       message: amount exceeds the reserve's posted balance
-                      docs_url: https://docs.southpay.io/ledger/errors#reserve_release_exceeds_balance
+                      docs_url: https://docs.kordio.io/errors#reserve_release_exceeds_balance
 
   /v1/reserves/{id}/claw:
     post:
@@ -2851,7 +2851,7 @@ paths:
 
         Push payloads to the returned `inbound_url` signed with
 
-            Southpay-Inbound-Signature: t=<unix_seconds>,v1=<hex>
+            Kordio-Inbound-Signature: t=<unix_seconds>,v1=<hex>
 
         where `v1 = HMAC-SHA256(secret, "<t>.<raw_body>")`. Timestamps
         more than 5 minutes off are rejected. The payload is
@@ -3369,7 +3369,7 @@ paths:
         full request/response detail so an integrator can debug a failing
         handler without DB access. `request_headers` is sanitized: any
         header containing `authorization`, `secret`, or `cookie` is
-        redacted. The `Southpay-Signature` header is preserved (HMAC,
+        redacted. The `Kordio-Signature` header is preserved (HMAC,
         not the key) so the value can be verified.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }

@@ -2,14 +2,14 @@
 
 Source for the Kordio docs site (`docs.kordio.io`), built with [Mintlify](https://mintlify.com).
 
-Kordio is a double-entry ledger API for fintechs, payment processors, and platforms that move money. It is a SouthPay product: the API is served from `ledger.southpay.io` and webhook signature headers keep the `Southpay-` prefix.
+Kordio is a double-entry ledger API for fintechs, payment processors, and platforms that move money. The API is served from `api.kordio.io`.
 
 ## Layout
 
 - `docs.json` — site config and navigation (two tabs: Guides, API Reference)
 - `*.mdx` — guide pages, at the repo root
 - `api-reference/openapi.yaml` — the OpenAPI 3.1 spec; endpoint pages are generated from it
-- `logo/`, `images/`, `favicon.svg` — brand assets, sourced from the kordio-website repo
+- `logo/`, `images/`, `favicon/` — brand assets, sourced from the Kordio frontend and website repos
 
 ## Local preview
 
