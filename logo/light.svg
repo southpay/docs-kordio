@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="148" height="44" viewBox="0 0 148 44" fill="none" role="img" aria-label="Kordio">
-  <g transform="translate(3 5) scale(0.17)" fill="#2FA79E" stroke="#2FA79E" stroke-width="13" stroke-linecap="round">
+  <g transform="translate(3 5) scale(0.17)" fill="#0E7C74" stroke="#0E7C74" stroke-width="13" stroke-linecap="round">
     <path fill="none" d="M166.6 19.4C164 21.9 156.1 29.3 151.1 34.1C146.1 38.8 141.2 43.5 136.6 48C131.9 52.5 127.3 56.9 122.9 61.1C118.5 65.4 114.3 69.5 110.2 73.4C106.1 77.3 102.2 81 98.4 84.6C94.6 88.1 90.9 91.5 87.4 94.6C84 97.7 80.6 100.7 77.4 103.4C74.2 106 71.2 108.5 68.2 110.7C65.3 112.9 62.6 114.9 60 116.5C57.3 118.2 54.9 119.6 52.5 120.8C50.2 121.9 48 122.8 46 123.4C44 124 42.1 124.3 40.3 124.4C38.6 124.5 37 124.3 35.5 123.9C34.1 123.4 32.8 122.8 31.6 121.9C30.4 121.1 29.4 120 28.6 118.8C27.7 117.6 27 116.2 26.5 114.7C25.9 113.3 25.5 111.7 25.3 110.1C25 108.5 24.9 106.8 25 105.2C25.1 103.6 25.3 101.9 25.7 100.4C26.1 98.9 26.7 97.5 27.4 96.2C28.1 94.9 29 93.7 30.1 92.8C31.1 91.8 32.4 91 33.8 90.4C35.2 89.9 36.7 89.5 38.5 89.4C40.2 89.3 42.1 89.4 44.2 89.8C46.3 90.2 48.6 90.8 51 91.7C53.5 92.6 56.1 93.7 58.8 95.1C61.6 96.5 64.6 98.2 67.7 100.1C70.8 101.9 74.1 104.1 77.6 106.4C81 108.7 84.7 111.3 88.5 114.1C92.3 116.8 96.2 119.8 100.4 122.9C104.5 126 108.8 129.4 113.3 132.8C117.8 136.3 122.4 139.9 127.2 143.7C132.1 147.4 137 151.3 142.2 155.3C147.3 159.3 152.6 163.4 158.1 167.6C163.6 171.9 172.2 178.4 175 180.6"/>
     <circle cx="166.6" cy="19.4" r="10.5" stroke="none"/>
     <circle cx="175" cy="180.6" r="10.5" stroke="none"/>
   </g>
-  <text x="45" y="30" font-family="Geist, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="600" letter-spacing="-1" fill="#FAFBFB">kordio</text>
+  <text x="45" y="30" font-family="Geist, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="600" letter-spacing="-1" fill="#101412">kordio</text>
 </svg>
