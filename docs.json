@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "aspen",
   "name": "Kordio",
   "colors": {
     "primary": "#0e7c74",
@@ -8,6 +8,36 @@
     "dark": "#0a5f5a"
   },
   "favicon": "/favicon.svg",
+  "icons": {
+    "library": "lucide"
+  },
+  "fonts": {
+    "heading": {
+      "family": "Geist",
+      "weight": 600
+    },
+    "body": {
+      "family": "Geist"
+    }
+  },
+  "background": {
+    "decoration": "grid",
+    "color": {
+      "light": "#fafbfb",
+      "dark": "#0b0f0e"
+    }
+  },
+  "styling": {
+    "eyebrows": "section",
+    "codeblocks": "dark"
+  },
+  "appearance": {
+    "strict": true,
+    "default": "light"
+  },
+  "thumbnails": {
+    "appearance": "light"
+  },
   "seo": {
     "metatags": {
       "og:type": "website",
@@ -52,13 +82,6 @@
       "github": "https://github.com/southpay",
       "linkedin": "https://linkedin.com/company/southpay"
     }
-  },
-  "appearance": {
-    "strict": true,
-    "default": "light"
-  },
-  "thumbnails": {
-    "appearance": "light"
   },
   "navigation": {
     "tabs": [

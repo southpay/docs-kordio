@@ -1,0 +1,13 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap");
+
+code,
+kbd,
+samp,
+pre {
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+#content a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}

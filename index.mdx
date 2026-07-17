@@ -1,5 +1,6 @@
 ---
 title: "Kordio API"
+icon: "book-open"
 description: "A double-entry ledger you can call over HTTP. Balanced per currency, idempotent, append-only."
 ---
 
@@ -21,13 +22,13 @@ Four primitives cover the whole API.
   <Card title="Account" icon="wallet">
     A named bucket of value in one currency. You choose the `id` and `currency`, and both are immutable once set.
   </Card>
-  <Card title="Posting" icon="arrow-right-arrow-left">
+  <Card title="Posting" icon="arrow-right-left">
     One line of a transaction. It says: this account moved by this amount in this direction (`debit` or `credit`).
   </Card>
-  <Card title="Transaction" icon="layer-group">
+  <Card title="Transaction" icon="layers">
     A set of postings that move together. The ledger enforces `sum(debits) == sum(credits)` per currency. That is the whole correctness model.
   </Card>
-  <Card title="Balance" icon="scale-balanced">
+  <Card title="Balance" icon="scale">
     The net of an account's postings, current or at a historical instant. Computed from `value_date`, never recomputed from market data.
   </Card>
 </CardGroup>
@@ -57,13 +58,13 @@ The ledger rejects anything that does not balance. Amounts are integers in the c
   <Card title="Append-only" icon="lock">
     Postings are never edited. You correct mistakes with a reversal or a refund, which are new transactions that reference the original.
   </Card>
-  <Card title="Idempotent" icon="rotate">
+  <Card title="Idempotent" icon="rotate-cw">
     Every write carries an `Idempotency-Key`. A replay returns the original transaction instead of writing a duplicate.
   </Card>
   <Card title="Multi-currency" icon="coins">
     Currency is first class. No code path assumes a single currency, and balances are tracked per currency.
   </Card>
-  <Card title="Test and live modes" icon="flask">
+  <Card title="Test and live modes" icon="flask-conical">
     Each OAuth client is bound to a mode. The mode of your token decides whether you read and write test or live data. They never mix.
   </Card>
 </CardGroup>
@@ -74,10 +75,10 @@ The ledger rejects anything that does not balance. Amounts are integers in the c
   <Card title="Quickstart" icon="rocket" href="/quickstart">
     Mint a token, create two accounts, post a transaction, and read a balance.
   </Card>
-  <Card title="Authentication" icon="key" href="/authentication">
+  <Card title="Authentication" icon="key-round" href="/authentication">
     OAuth 2.0 client credentials, scopes, and the discovery document.
   </Card>
-  <Card title="Core concepts" icon="book" href="/concepts">
+  <Card title="Core concepts" icon="book-open" href="/concepts">
     Double-entry, append-only corrections, idempotency, multi-currency, and value dates.
   </Card>
   <Card title="API reference" icon="code" href="/api-reference/introduction">
