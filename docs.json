@@ -21,6 +21,7 @@
     }
   },
   "background": {
+    "decoration": "grid",
     "color": {
       "light": "#fafbfb",
       "dark": "#0b0f0e"
