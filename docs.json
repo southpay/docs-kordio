@@ -1,0 +1,116 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Kordio",
+  "colors": {
+    "primary": "#0e7c74",
+    "light": "#2fa79e",
+    "dark": "#0a5f5a"
+  },
+  "favicon": "/favicon.svg",
+  "seo": {
+    "metatags": {
+      "og:type": "website",
+      "og:site_name": "Kordio Documentation",
+      "og:image": "https://docs.kordio.io/images/og.png",
+      "twitter:card": "summary_large_image",
+      "twitter:image": "https://docs.kordio.io/images/og.png"
+    }
+  },
+  "logo": {
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.svg",
+    "href": "https://kordio.io"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:support@kordio.io"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://app.kordio.io"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/southpay",
+      "linkedin": "https://linkedin.com/company/southpay"
+    }
+  },
+  "appearance": {
+    "strict": true,
+    "default": "light"
+  },
+  "thumbnails": {
+    "appearance": "light"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "pages": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "index",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Why Kordio",
+            "pages": [
+              "positioning",
+              "why-not-postgres",
+              "invariants"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts",
+              "money-flows",
+              "reconciliation",
+              "feeds",
+              "pagination",
+              "webhooks"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "errors",
+              "changelog"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "pages": [
+          "api-reference/introduction",
+          {
+            "group": "Endpoints",
+            "openapi": "api-reference/openapi.yaml"
+          }
+        ]
+      }
+    ]
+  }
+}
