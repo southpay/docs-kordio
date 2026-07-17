@@ -11,3 +11,21 @@ pre {
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
 }
+
+/* Ledger grid — drawn here instead of Mintlify's faint `grid` decoration,
+   which read as too subtle. Tune visibility with the two alpha values and
+   the 32px cell size. Horizontals are stronger than verticals for a ruled
+   ledger feel. Sits behind the reading column; cards/code panels cover it. */
+#content {
+  background-image:
+    repeating-linear-gradient(to bottom, rgba(14, 124, 116, 0.14) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(to right, rgba(14, 124, 116, 0.07) 0 1px, transparent 1px 32px);
+  background-position: 0 0;
+}
+
+.dark #content,
+[data-theme="dark"] #content {
+  background-image:
+    repeating-linear-gradient(to bottom, rgba(47, 167, 158, 0.16) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(to right, rgba(47, 167, 158, 0.08) 0 1px, transparent 1px 32px);
+}
