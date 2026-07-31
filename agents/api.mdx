@@ -1,0 +1,179 @@
+---
+title: "Agent API reference"
+icon: "terminal"
+description: "Every endpoint an agent runtime can call, with the exact request and response shapes."
+---
+
+These endpoints authenticate with a runtime API key, not a dashboard token:
+
+```
+Authorization: Bearer krt_...
+```
+
+A runtime key is shown once, at creation. Kordio stores only a digest and compares it in constant time. Keys are bound to a workspace and a mode, so a test key can never reach live data.
+
+Base URL is `https://api.kordio.io`.
+
+## Authorize an action
+
+<ParamField path="POST /v1/agent/actions" type="endpoint" required>
+  The call that goes in front of the spend.
+</ParamField>
+
+**Headers**
+
+| Header | Required | Notes |
+| --- | --- | --- |
+| `Authorization` | yes | `Bearer krt_...` |
+| `Idempotency-Key` | yes | Unique per action. A replay returns the original decision. |
+
+**Body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `session_id` | string | yes | An active session belonging to this runtime. |
+| `action_type` | string | yes | Lowercase, dot separated. `payment.create`, `tool.invoke`. |
+| `resource` | string | no | The counterparty or target. Matched by allowlists. |
+| `cost_cents` | integer | no | Minor units. Omit or `0` for an action that spends nothing. |
+| `metadata` | object | no | Any dot path here is addressable from the condition language as `metadata.*`. |
+| `trace_id` | string | no | Yours, if you have one. Generated otherwise, and it links the whole audit trail. |
+
+**Status codes**
+
+| Status | Outcome | Meaning |
+| --- | --- | --- |
+| `201` | `allowed` | Execute it. A `cosignature` is included. |
+| `202` | `requires_approval` | Held for a person. No cosignature. |
+| `403` | `denied` | Do not execute. `decision.rule` names what refused. |
+| `400` | | Missing `Idempotency-Key`. |
+
+**Response**
+
+```json
+{
+  "data": {
+    "id": "9b2e...",
+    "workspace_id": "...",
+    "runtime_id": "...",
+    "session_id": "...",
+    "action_type": "payment.create",
+    "resource": "acme-supplies.example",
+    "cost_cents": 12000,
+    "currency": "USD",
+    "state": "pending",
+    "idempotency_key": "order-4471-attempt-1",
+    "trace_id": "...",
+    "created_at": "2026-07-31T09:12:04Z"
+  },
+  "decision": {
+    "outcome": "allowed",
+    "rule": null,
+    "detail": {},
+    "headroom": { "session_remaining_cents": 38000 },
+    "policy_snapshot": []
+  },
+  "cosignature": "eyJhbGciOiJFUzI1NiIs..."
+}
+```
+
+`state` is one of `pending`, `requires_approval`, `completed`, `failed`, `denied`.
+
+## Simulate an action
+
+<ParamField path="POST /v1/agent/actions/simulate" type="endpoint">
+  Same body, no `Idempotency-Key`, always `200`.
+</ParamField>
+
+Runs the full evaluation and records nothing: no intent, no reservation, no audit event. The response is a bare decision with no `id`.
+
+## Report the outcome
+
+<ParamField path="POST /v1/agent/actions/:id/complete" type="endpoint">
+  The action succeeded. Settles the reservation.
+</ParamField>
+
+<ParamField path="POST /v1/agent/actions/:id/fail" type="endpoint">
+  The action failed. Releases the reservation back to the session budget.
+</ParamField>
+
+`fail` takes an optional `reason` string, which is stored on the intent and shown in the audit trail.
+
+Reporting is not optional. An intent left `pending` holds its budget until the session closes.
+
+## Read an action
+
+<ParamField path="GET /v1/agent/actions/:id" type="endpoint">
+  The current state of one intent.
+</ParamField>
+
+This is what you poll while an action sits in `requires_approval`, if you are not using webhooks.
+
+## Sessions
+
+<ParamField path="POST /v1/agent/sessions" type="endpoint">
+  Open a budget envelope.
+</ParamField>
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `budget_cents` | integer | The ceiling for this run. |
+| `currency` | string | Defaults to `USD`. |
+| `parent_session_id` | string | Optional. Delegates from an existing session. |
+
+```json
+{
+  "data": {
+    "id": "3f1c...",
+    "budget_cents": 50000,
+    "spent_cents": 12000,
+    "remaining_cents": 38000,
+    "currency": "USD",
+    "status": "active"
+  }
+}
+```
+
+<ParamField path="GET /v1/agent/sessions/:id" type="endpoint">
+  Read remaining budget.
+</ParamField>
+
+`status` is `active`, `exhausted`, or `closed`.
+
+## Payments
+
+<ParamField path="POST /v1/agent/payment_intents" type="endpoint">
+  Authorize and execute a payment in one call.
+</ParamField>
+
+Same `201` / `202` / `403` contract as actions, and the same `Idempotency-Key` requirement. A payment is evaluated as the action type `payment.create` with the counterparty as its resource, so a runtime's caps, windows and allowlists apply across payments and other actions together. Spend on one consumes headroom for the other.
+
+`POST /v1/agent/payment_intents/simulate` evaluates without reserving or recording.
+
+## Verify a cosignature
+
+<ParamField path="POST /v1/cosign/verify" type="endpoint">
+  Unauthenticated. Takes `cosignature`.
+</ParamField>
+
+Reports the claims, whether the signature is valid, and whether the underlying intent is still spendable. See [verifying an authorization](/agents/cosignatures) for offline verification, which is what you want in the hot path.
+
+<ParamField path="GET /.well-known/jwks.json" type="endpoint">
+  The public keys. Unauthenticated, cacheable.
+</ParamField>
+
+## Errors
+
+Errors carry a message and, where useful, a stable code:
+
+```json
+{ "error": { "message": "Runtime is not scoped for tool.invoke", "code": null } }
+```
+
+| Status | When |
+| --- | --- |
+| `400` | Missing `Idempotency-Key`, or a malformed body. |
+| `401` | Missing or unrecognised runtime key. |
+| `403` | The decision was `denied`, or the key is not scoped for the action type. |
+| `404` | The session or intent does not belong to this runtime. |
+| `422` | The request was understood but cannot be applied. |
+| `503` | A live payment provider is unavailable, with code `live_provider_unavailable`. |

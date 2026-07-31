@@ -1,0 +1,90 @@
+---
+title: "Verifying an authorization"
+icon: "signature"
+description: "Every allowed decision comes back signed, so the thing that executes can check the authority without trusting the agent."
+---
+
+A decision stored in our database only binds an executor that chooses to ask us, and asks us every time. Anything already holding the means to act can act without checking, and a control layer becomes a log of advice that may have been ignored.
+
+So an allowed decision also returns a **cosignature**: a compact JWS over the runtime, session, action, resource, amount and currency, expiring in minutes.
+
+```json
+{
+  "data": { "id": "9b2e...", "state": "pending" },
+  "decision": { "outcome": "allowed", "rule": null },
+  "cosignature": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImtleV8xIn0..."
+}
+```
+
+The agent carries that string to whatever executes the action. The executor verifies it. If it does not verify, the action does not happen.
+
+This is what makes Kordio a required signer without making it a custodian. We never hold your funds and never hold your keys.
+
+## What is inside
+
+The JWS is `ES256` over these claims:
+
+| Claim | Meaning |
+| --- | --- |
+| `iss` | Always `kordio` |
+| `sub` | The runtime that was authorized |
+| `jti` | The intent id, so a signature maps to exactly one decision |
+| `iat`, `nbf`, `exp` | Issued, not-before, expiry. Default lifetime is five minutes |
+| `workspace_id` | The workspace the decision belongs to |
+| `session_id` | The budget envelope it was committed against |
+| `intent_id` | Same as `jti`, for readability |
+| `action_type` | What was authorized, for example `payment.create` |
+| `resource` | The counterparty or target, when one was given |
+| `amount_cents` | The amount authorized, in minor units |
+
+Check the claims, not just the signature. A valid signature for `$120` to one vendor is not authority to send `$1,200` to another.
+
+## Verify it offline
+
+The public keys are published as a standard JWKS:
+
+```
+GET https://api.kordio.io/.well-known/jwks.json
+```
+
+Cache it and verify locally. No call to Kordio is needed, in any language with a JOSE library.
+
+```js
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+const jwks = createRemoteJWKSet(new URL('https://api.kordio.io/.well-known/jwks.json'));
+
+export async function checkAuthority(cosignature, expected) {
+  const { payload } = await jwtVerify(cosignature, jwks, { issuer: 'kordio' });
+
+  if (payload.action_type !== expected.actionType) throw new Error('wrong action');
+  if (payload.resource !== expected.resource) throw new Error('wrong counterparty');
+  if (payload.amount_cents !== expected.amountCents) throw new Error('wrong amount');
+
+  return payload;
+}
+```
+
+Offline verification is the important property. It means an authorization stays checkable when Kordio is slow, and it means past authorizations remain verifiable against the published keys whatever happens to us later.
+
+## Or ask us
+
+If you would rather not verify locally, there is an endpoint. It also tells you whether the authorization has since been spent, which a signature alone cannot:
+
+```bash
+curl -X POST https://api.kordio.io/v1/cosign/verify \
+  -H "Content-Type: application/json" \
+  -d '{"cosignature": "eyJhbGciOi..."}'
+```
+
+It reports the claims, whether the signature is valid, and whether the underlying intent is still spendable or has already settled.
+
+<Note>
+  Use offline verification in the hot path and the endpoint where you need settlement state. A signature proves authority was granted. It does not prove the authority has not already been used.
+</Note>
+
+## Rotation
+
+Keys rotate without invalidating authorizations already in flight. Retired keys keep verifying and stop signing, and both appear in the JWKS, so a cosignature issued a minute before a rotation still checks out.
+
+If cosigning is not configured on a deployment, the JWKS returns an empty set and decisions come back without a `cosignature` field rather than with an unverifiable one.

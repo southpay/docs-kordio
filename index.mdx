@@ -1,17 +1,40 @@
 ---
 title: "Kordio API"
 icon: "book-open"
-description: "A double-entry ledger you can call over HTTP. Balanced per currency, idempotent, append-only."
+description: "Decide what your AI agents are allowed to do, before they do it, and keep the books that prove what happened."
 ---
 
-## What the Kordio API is
+## What Kordio is
 
-The Kordio API is a double-entry ledger for developers. You model accounts, post balanced transactions, and read balances over a plain HTTP API. The ledger guarantees the accounting invariants; you write the business logic.
+Kordio is the control layer for AI agents that spend. Before an agent pays a vendor or calls a paid tool, it asks Kordio. We evaluate the action against policy you wrote and answer in the same request: allowed, requires approval, or denied, naming the rule that decided and reporting the headroom left on every limit.
+
+Every allowed decision comes back signed, so whatever executes the action can verify the authority instead of trusting the agent. We hold no funds, no accounts, and none of your credentials. A required signer, never a custodian.
+
+Underneath sits a double-entry ledger that records every decision as balanced postings. It is included rather than sold separately, and it is documented in its own right further down, because plenty of teams want the books on their own terms.
+
+<CardGroup cols={2}>
+  <Card title="Authorize an agent action" icon="shield-check" href="/agents/quickstart">
+    Gate your first action in five minutes, in test mode, with one HTTP call.
+  </Card>
+  <Card title="How the control layer works" icon="shield" href="/agents/concepts">
+    Runtimes, sessions, policies, intents and decisions.
+  </Card>
+  <Card title="Writing a policy" icon="scale" href="/agents/policies">
+    Caps, windows, allowlists, thresholds, and the condition language.
+  </Card>
+  <Card title="Verifying an authorization" icon="signature" href="/agents/cosignatures">
+    Check a cosignature offline, without calling us.
+  </Card>
+</CardGroup>
+
+## The ledger underneath
+
+You model accounts, post balanced transactions, and read balances over a plain HTTP API. The ledger guarantees the accounting invariants; you write the business logic.
 
 You sign up, get OAuth client credentials, and ship in minutes. There is no sales call and no setup project. You get primitives, not opinions: the platform never bakes in your domain, so a treasury startup, a marketplace, an FX desk, and a SaaS company billing its own usage all use the same four primitives.
 
 <Info>
-  A payment gateway is one customer of this API. Kordio itself knows nothing about payments. It speaks accounts, postings, transactions, and balances.
+  The control layer is one customer of this ledger. The ledger itself knows nothing about agents. It speaks accounts, postings, transactions, and balances.
 </Info>
 
 ## The mental model

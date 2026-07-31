@@ -96,6 +96,17 @@
             ]
           },
           {
+            "group": "Agent control layer",
+            "pages": [
+              "agents/quickstart",
+              "agents/concepts",
+              "agents/policies",
+              "agents/approvals",
+              "agents/cosignatures",
+              "agents/api"
+            ]
+          },
+          {
             "group": "Why Kordio",
             "pages": [
               "positioning",
@@ -104,7 +115,7 @@
             ]
           },
           {
-            "group": "Core Concepts",
+            "group": "Ledger concepts",
             "pages": [
               "concepts",
               "money-flows",

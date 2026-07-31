@@ -1,0 +1,155 @@
+---
+title: "Authorize an agent action"
+icon: "shield-check"
+description: "Gate your first agent action in about five minutes, using test mode and a single HTTP call."
+---
+
+## What you are building
+
+By the end of this page an agent of yours asks Kordio before it spends, and Kordio answers with `allowed`, `requires_approval`, or `denied`, naming the rule that decided.
+
+Everything here runs in test mode. Test mode uses the same policy engine as live, so the integration you write now is the one you ship.
+
+## 1. Create a runtime
+
+A **runtime** is a scoped identity for one agent workload. It carries its own API key and its own permitted action types.
+
+Create one in the console under **Runtimes**, or over the API with your dashboard token:
+
+```bash
+curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/runtimes \
+  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "procurement agent", "mode": "test", "scopes": ["payment.*", "tool.invoke"]}'
+```
+
+The response carries `api_key` exactly once. It starts with `krt_`. Store it the way you store any other secret; Kordio keeps only a digest and cannot show it to you again.
+
+<Warning>
+  `scopes` restricts which action types this key may even ask about. An empty array means unrestricted. Prefer one runtime per agent workload with the narrowest scopes that work. Runtimes are unlimited on every paid plan, so there is no reason to share one.
+</Warning>
+
+## 2. Open a session
+
+A **session** is a budget envelope for one run. Spend is committed against it, and it is the unit that stops a loop from draining an account.
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/sessions \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_cents": 50000, "currency": "USD"}'
+```
+
+```json
+{
+  "data": {
+    "id": "3f1c...",
+    "budget_cents": 50000,
+    "spent_cents": 0,
+    "remaining_cents": 50000,
+    "status": "active"
+  }
+}
+```
+
+## 3. Ask before you spend
+
+This is the call that matters. Put it in front of the action, not after it.
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/actions \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Idempotency-Key: order-4471-attempt-1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "3f1c...",
+    "action_type": "payment.create",
+    "resource": "acme-supplies.example",
+    "cost_cents": 12000
+  }'
+```
+
+`Idempotency-Key` is required. Reuse the same key when you retry and Kordio replays the original decision instead of reserving the budget twice.
+
+An allowed action comes back `201`:
+
+```json
+{
+  "data": {
+    "id": "9b2e...",
+    "state": "pending",
+    "action_type": "payment.create",
+    "cost_cents": 12000,
+    "trace_id": "..."
+  },
+  "decision": {
+    "outcome": "allowed",
+    "rule": null,
+    "detail": {},
+    "headroom": { "session_remaining_cents": 38000 }
+  },
+  "cosignature": "eyJhbGciOiJFUzI1NiIsImtpZCI6..."
+}
+```
+
+Read the status code, not the body, to branch:
+
+| Status | Outcome | What your agent does |
+| --- | --- | --- |
+| `201` | `allowed` | Execute, then report the result in step 4. |
+| `202` | `requires_approval` | Stop. A person has to resolve it. Poll `GET /v1/agent/actions/:id` or wait for your webhook. |
+| `403` | `denied` | Do not execute. `decision.rule` names what refused. |
+
+<Note>
+  `decision.headroom` tells you what is left on every limit that applied. Surface it to your agent so it can pick a cheaper path instead of retrying into the same wall.
+</Note>
+
+## 4. Report what happened
+
+Kordio holds the budget reservation until you say how the action ended.
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/actions/9b2e.../complete \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY"
+```
+
+If it failed, say so instead. The reservation is released and the budget goes back:
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/actions/9b2e.../fail \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "vendor returned 502"}'
+```
+
+Skipping this step is the most common integration mistake. An action that is never completed or failed holds its budget until the session closes.
+
+## 5. Try it without spending anything
+
+`simulate` runs the whole policy evaluation and records nothing. Use it in tests, and in your own UI to show someone what a policy would do before they save it.
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/actions/simulate \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "3f1c...", "action_type": "payment.create", "cost_cents": 999999}'
+```
+
+It returns a decision with no `id` and no reservation, because no intent was created.
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Write a policy" icon="scale" href="/agents/policies">
+    Caps, windows, allowlists, approval thresholds, and the condition language.
+  </Card>
+  <Card title="Verify a cosignature" icon="signature" href="/agents/cosignatures">
+    Check an authorization offline, without calling Kordio.
+  </Card>
+  <Card title="Hold spend for a human" icon="user-check" href="/agents/approvals">
+    What `202` means and how the queue resolves.
+  </Card>
+  <Card title="Agent API reference" icon="terminal" href="/agents/api">
+    Every field on every agent endpoint.
+  </Card>
+</CardGroup>

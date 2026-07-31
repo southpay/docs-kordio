@@ -1,0 +1,74 @@
+---
+title: "Holding spend for a person"
+icon: "user-check"
+description: "What a 202 means, how your agent should wait, and how the decision comes back."
+---
+
+Some spend should not be a machine's call. An approval threshold does not refuse the action; it parks it until a person decides.
+
+## What your agent sees
+
+When a rule holds an action, the authorize call returns `202` and the intent is in state `requires_approval`:
+
+```json
+{
+  "data": {
+    "id": "9b2e...",
+    "state": "requires_approval",
+    "action_type": "payment.create",
+    "cost_cents": 240000
+  },
+  "decision": {
+    "outcome": "requires_approval",
+    "rule": "approval_threshold",
+    "detail": { "above_cents": 100000 },
+    "headroom": { "session_remaining_cents": 260000 }
+  }
+}
+```
+
+There is no `cosignature`. Nothing has been authorized yet.
+
+The budget is reserved while the intent waits, so a held action cannot be quietly outspent by the next one.
+
+## How your agent should wait
+
+Do not busy-poll, and do not treat a hold as a failure to retry around. Retrying with a new idempotency key creates a second held intent and asks a person the same question twice.
+
+The two supported patterns:
+
+<CardGroup cols={2}>
+  <Card title="Webhook" icon="webhook">
+    Subscribe to `action.requires_approval` and `approval.resolved`. This is the one to use in production.
+  </Card>
+  <Card title="Poll the intent" icon="repeat">
+    `GET /v1/agent/actions/:id` until `state` leaves `requires_approval`. Fine for a script.
+  </Card>
+</CardGroup>
+
+```bash
+curl https://api.kordio.io/v1/agent/actions/9b2e... \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY"
+```
+
+## What the person sees
+
+In the console, a held action shows what approving it would actually do before anyone clicks: the amount, the rule that held it, the session budget it draws on, how much comes back if it is denied, how many other holds are open against the same session, and the windows it consumes.
+
+That is the point of the queue. An approver who only sees "approve $2,400?" is rubber-stamping.
+
+## After the decision
+
+**Approved.** The intent moves to `pending` and becomes executable. Your agent proceeds exactly as it would have on a `201`, then reports the outcome with `complete` or `fail`.
+
+**Denied.** The intent moves to `denied` and the reservation is released back to the session budget. The action must not be executed. `resolved_by_sub` records who decided, and the whole thing is in the audit trail linked by `trace_id`.
+
+<Warning>
+  A denial is not a rate limit. Do not re-ask with a fresh idempotency key. If your agent genuinely needs a different action, that is a different action: new amount, new resource, new key.
+</Warning>
+
+## Who can approve
+
+Approving is a capability, not a job title. The `approve` capability is separate from `manage_policy`, so the person who authorises a payment need not be the person who can widen the rule that held it.
+
+Keep those apart. Segregation of duties is most of what an auditor is looking for here, and it is the reason approvers are unlimited on every paid plan: capping the people allowed to approve spend would make holds sit longer and agents stall.

@@ -1,0 +1,123 @@
+---
+title: "Writing a policy"
+icon: "scale"
+description: "Caps, windows, allowlists and approval thresholds, plus the condition language for everything they do not cover."
+---
+
+A policy is data, not code. It always terminates, it is validated when you write it rather than when an agent is waiting, it diffs in review, and any UI can render it.
+
+That is deliberate. A policy engine standing in front of money should be analysable, not Turing-complete.
+
+## Your first policy
+
+Attach a policy to a runtime:
+
+```bash
+curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/policies \
+  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "runtime_id": "...",
+    "rules": [
+      {"kind": "cost_cap", "max_cents": 50000, "rule_name": "per_payment_ceiling"},
+      {"kind": "approval_threshold", "above_cents": 20000},
+      {"kind": "spend_window", "max_cents": 200000, "window_seconds": 3600}
+    ]
+  }'
+```
+
+That policy says: never more than $500 in one action, hold anything over $200 for a person, and never more than $2,000 in any rolling hour.
+
+The third rule is the one that catches the retry loop. The first two, on their own, would let nineteen individually reasonable $340 charges through.
+
+## Rule kinds
+
+| Kind | Settings | What it does |
+| --- | --- | --- |
+| `cost_cap` | `max_cents`, `action_types` | Refuses a single action above the ceiling. |
+| `spend_window` | `max_cents`, `window_seconds`, `action_types` | Refuses once spend in a rolling window exceeds the cap. |
+| `monthly_spend_cap` | `max_cents`, `action_types` | Refuses once calendar-month spend exceeds the cap. |
+| `rate_limit` | `max_actions`, `window_seconds`, `action_types` | Refuses on count rather than amount. Catches loops that spend nothing per call. |
+| `approval_threshold` | `above_cents`, `action_types` | Holds for a person instead of refusing. |
+| `action_allowlist` | `allow` | Only these action types are permitted. |
+| `resource_allowlist` | `allow`, `action_types` | Only these counterparties or resources are permitted. |
+
+Every kind takes an optional `rule_name`, echoed back in the decision. Every rule is assigned a stable `id` on write, so a decision read months later can still name the exact rule that produced it.
+
+An unknown kind, or a missing setting, is rejected when the policy is written. Never when an agent is waiting on an answer.
+
+## The condition language
+
+The typed kinds cover the common cases. `condition` is the open one: a boolean expression over the action, with an effect.
+
+```json
+{
+  "kind": "condition",
+  "effect": "deny",
+  "rule_name": "engineering_vendors_only",
+  "when": {
+    "all_of": [
+      {"field": "action_type", "operator": "starts_with", "value": "payment."},
+      {"any_of": [
+        {"field": "resource", "operator": "in", "value": ["api.openai.com", "api.anthropic.com"]},
+        {"field": "metadata.preapproved", "operator": "eq", "value": true}
+      ]},
+      {"not": {"field": "cost_cents", "operator": "gt", "value": 50000}}
+    ]
+  }
+}
+```
+
+**Effects** are `deny` (the default), `allow`, or `require_approval`.
+
+**Combinators** are `all_of`, `any_of` and `not`, nestable to ten levels.
+
+**Fields** are `action_type`, `resource`, `cost_cents`, `currency`, `runtime_id`, `runtime_mode`, `session_id`, and any `metadata.*` dot path.
+
+**Operators** are `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `not_in`, `contains`, `starts_with`, `ends_with`, `exists`.
+
+A missing field never raises. It simply fails to match. Unknown fields and operators are rejected at write time.
+
+## Blocklist and allowlist
+
+A policy is `blocklist` by default: the action is permitted unless a rule denies it.
+
+Set `mode: "allowlist"` and it inverts. The action is denied unless one of that policy's `allow` rules matches, reported as the rule `not_allowlisted`. A `deny` rule still overrides an `allow`.
+
+Each allowlist policy is an independent gate. Attach two and both must be satisfied.
+
+<Warning>
+  Allowlist mode is the right default for a runtime that touches real money. Start by denying everything and naming what you permit, rather than trying to enumerate every way an agent could go wrong.
+</Warning>
+
+## Reusable modules
+
+Modules are named rule sets scoped to a workspace. A policy imports them by name and they compile in ahead of its own rules.
+
+```bash
+curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/policy_modules \
+  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "vendor-allowlist", "rules": [...]}'
+```
+
+```json
+{ "runtime_id": "...", "imports": ["vendor-allowlist"], "rules": [] }
+```
+
+Editing a module changes every policy importing it. A policy importing an unknown module will not save, and a module still imported by a policy will not delete. Modules do not import other modules, so composition is one level deep and cannot cycle.
+
+## Test before you apply
+
+Never guess what a policy does. Ask:
+
+```bash
+curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/policy_previews \
+  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"runtime_id": "...", "action_type": "payment.create", "cost_cents": 75000}'
+```
+
+You get back the decision the policy would produce, including which rule decides and what headroom would remain. Nothing is recorded and no budget is reserved.
+
+The same evaluation is available to your agent at `POST /v1/agent/actions/simulate`, which is how you show someone the consequence of a change before they save it.
