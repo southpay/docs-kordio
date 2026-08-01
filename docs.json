@@ -88,17 +88,16 @@
         "tab": "Guides",
         "pages": [
           {
-            "group": "Getting Started",
+            "group": "Start here",
             "pages": [
               "index",
-              "quickstart",
+              "agents/quickstart",
               "authentication"
             ]
           },
           {
             "group": "Agent control layer",
             "pages": [
-              "agents/quickstart",
               "agents/concepts",
               "agents/policies",
               "agents/approvals",
@@ -115,19 +114,20 @@
             ]
           },
           {
-            "group": "Ledger concepts",
+            "group": "The ledger",
             "pages": [
+              "quickstart",
               "concepts",
               "money-flows",
               "reconciliation",
               "feeds",
-              "pagination",
-              "webhooks"
+              "pagination"
             ]
           },
           {
             "group": "Reference",
             "pages": [
+              "webhooks",
               "errors",
               "changelog"
             ]

@@ -1,14 +1,91 @@
 ---
 title: "Authentication"
 icon: "key-round"
-description: "OAuth 2.0 client credentials, scopes, and test versus live mode."
+description: "Runtime keys for agents, dashboard tokens for people, OAuth for the ledger, and how test and live stay apart."
 ---
 
-Every machine call to the Kordio API carries a Bearer access token. You obtain one with the OAuth 2.0 `client_credentials` grant, then send it on each request.
+Kordio has three callers and they authenticate differently, because they are trusted differently.
 
-## Get an access token
+| Caller | Credential | Reaches |
+| --- | --- | --- |
+| An **agent**, asking whether it may act | Runtime API key, `krt_…` | `/v1/agent/*` |
+| A **person or your backend**, managing the workspace | Identity bearer token | `/v1/workspaces/:slug/*` |
+| Your **ledger integration** | OAuth client credentials | the ledger API |
 
-Authenticate to the token endpoint with your `client_id` and `client_secret`. You can send them as HTTP Basic auth (recommended) or as form fields in the body.
+A runtime key can never write policy, and a dashboard token can never authorize an action as an agent. That separation is the point: an agent able to widen its own limits is not governed by them.
+
+## Runtime keys
+
+This is the credential your agent carries. Create a runtime and the key is returned exactly once:
+
+```bash
+curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/runtimes \
+  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "procurement agent", "mode": "test", "scopes": ["payment.*"]}'
+```
+
+```json
+{
+  "data": {
+    "id": "…",
+    "name": "procurement agent",
+    "mode": "test",
+    "api_key_prefix": "krt_7f2a",
+    "api_key": "krt_7f2a…"
+  }
+}
+```
+
+Kordio stores only a digest and compares it in constant time. The key cannot be shown again; if you lose it, rotate the runtime.
+
+Send it as a bearer token:
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/actions \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Idempotency-Key: order-4471" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "…", "action_type": "payment.create", "cost_cents": 12000}'
+```
+
+### Scopes
+
+`scopes` restricts which action types a key may even ask about: an exact match (`payment.create`), a namespace wildcard (`payment.*`), or `*`. An empty array means unrestricted, so keys created before scoping keep working.
+
+A request outside the key's scopes is refused by an intrinsic rule before any policy runs, and the decision names `runtime_scope` as what refused it.
+
+<Warning>
+  Scope narrowly and use one runtime per agent workload. Runtimes are unlimited on every paid plan, so a shared key buys you nothing and costs you the ability to revoke one agent without stopping the rest.
+</Warning>
+
+### Rotating and revoking
+
+A runtime is `active`, `suspended`, or `revoked`. Suspending stops new authorizations and leaves history intact; revoking is permanent. Neither rewrites decisions already made, and neither invalidates a cosignature already issued, which stays verifiable until it expires.
+
+## Dashboard tokens
+
+Everything under `/v1/workspaces/:slug/*` uses an identity bearer token: creating runtimes, writing policy, reading intents, resolving approvals, managing billing.
+
+```bash
+curl https://api.kordio.io/v1/workspaces/$WORKSPACE/policies \
+  -H "Authorization: Bearer $DASHBOARD_TOKEN"
+```
+
+Capabilities are per member, per workspace, and the API enforces them:
+
+| Capability | Lets you |
+| --- | --- |
+| `read` | See runtimes, policies, sessions, intents, the audit trail |
+| `approve` | Resolve a held action |
+| `manage_policy` | Write policy, create and rotate runtimes |
+| `manage_members` | Invite and remove people, change roles, manage billing |
+
+`approve` and `manage_policy` are deliberately separate. The person who authorises a payment need not be the person who can widen the rule that held it, which is most of what an auditor is looking for.
+
+## OAuth for the ledger
+
+The ledger API uses the OAuth 2.0 `client_credentials` grant. Send your client id and secret as HTTP Basic auth, or as form fields.
 
 <CodeGroup>
 
@@ -28,29 +105,18 @@ curl -X POST https://api.kordio.io/oauth/token \
 
 </CodeGroup>
 
-The response is an HS256 JWT valid for one hour:
+The response is a JWT valid for one hour:
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…",
   "token_type": "Bearer",
   "expires_in": 3600,
   "scope": "ledger:read ledger:write"
 }
 ```
 
-Send it as a Bearer token on every request:
-
-```bash
-curl https://api.kordio.io/v1/accounts \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-The token carries your `tenant_id`, your `mode`, and the granted `scope`. You can decode it at `jwt.io` to inspect the claims. The `scope` parameter is optional and defaults to all scopes granted to the client; pass a space-separated subset to narrow it.
-
-## Scopes
-
-Operations are split into read and write scopes. Mutations also require the matching write scope.
+Mint on demand and cache until shortly before expiry. A token stored once and never refreshed becomes a dead integration overnight.
 
 | Scope | Grants |
 | --- | --- |
@@ -59,52 +125,38 @@ Operations are split into read and write scopes. Mutations also require the matc
 | `ledger:clients:read` | List and inspect OAuth clients (never returns secrets) |
 | `ledger:clients:write` | Create, rotate, and delete OAuth clients |
 
-A token missing the scope an endpoint requires returns `403` with code `insufficient_scope`. See the [errors reference](/errors#insufficient_scope).
+A token missing the scope an endpoint requires returns `403` with code `insufficient_scope`.
 
-## Test and live mode
+The authorization server publishes its metadata at `GET /.well-known/oauth-authorization-server` (RFC 8414), so tooling can discover the token endpoint, grants, scopes, and signing algorithms without hard-coding them.
 
-Each OAuth client is bound to a single mode at registration, either `test` or `live`. The mode of the token you present decides which dataset you read and write. Test and live data are physically separate and never interleave.
+Client secrets are shown in plaintext exactly once, at creation or rotation. Only a SHA-256 hash is stored. Token-endpoint failures follow RFC 6749: `invalid_client`, `invalid_grant`, `invalid_scope`, `unsupported_grant_type`.
 
-There is no `?test=` query flag. To work in test mode, use a token minted from a test-mode client; to work in live mode, use a live-mode client. Every response echoes `livemode` so you can confirm which dataset you are touching:
+## Test and live
 
-```json
-{ "data": { "object": "account", "id": "cash:usd" }, "livemode": false, "request_id": "req_..." }
-```
+Every credential is bound to one mode and the two never mix. A test runtime key cannot touch live data, and a live runtime cannot be created on a plan without live mode.
 
-## Discovery document (RFC 8414)
+Test mode runs the same policy engine, returns the same shapes, and issues real cosignatures. That is deliberate: you can prove an entire integration, including signature verification inside your own executor, before any money is at stake.
 
-The authorization server publishes its metadata at a well-known path so tooling can discover the token endpoint, grant types, scopes, and signing algorithms automatically.
-
-```bash
-curl https://api.kordio.io/.well-known/oauth-authorization-server
-```
+Ledger responses echo `livemode` so you can confirm which dataset you touched:
 
 ```json
-{
-  "issuer": "https://api.kordio.io",
-  "token_endpoint": "https://api.kordio.io/oauth/token",
-  "grant_types_supported": ["client_credentials"],
-  "response_types_supported": ["token"],
-  "scopes_supported": ["ledger:read", "ledger:write"],
-  "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post"],
-  "token_endpoint_auth_signing_alg_values_supported": ["HS256"],
-  "service_documentation": "https://docs.kordio.io/auth"
-}
+{ "data": { "object": "account", "id": "cash:usd" }, "livemode": false, "request_id": "req_…" }
 ```
 
-## Client secrets
+## Verifying a cosignature
 
-A client secret is shown in plaintext exactly once, when you create or rotate the client. Only its SHA-256 hash is stored, so the secret cannot be retrieved later. Store it securely as soon as you receive it. If you lose it, rotate the client to mint a new secret.
+Cosignature verification needs no credential at all. The public keys are at `GET /.well-known/jwks.json` and verification happens in your own process. See [verifying an authorization](/agents/cosignatures).
 
-## Errors at the token endpoint
+## When something is refused
 
-The token endpoint follows RFC 6749. Common failures:
-
-| Error | Meaning |
+| Status | Meaning |
 | --- | --- |
-| `invalid_client` | The `client_id` or `client_secret` is wrong, or the client is disabled |
-| `invalid_grant` | The grant parameters are invalid |
-| `invalid_scope` | You requested a scope the client was not granted |
-| `unsupported_grant_type` | Only `client_credentials` is supported |
+| `401` | Missing or unrecognised credential. |
+| `403` | Recognised but not permitted: a capability you lack, a scope the runtime does not hold, or a decision that was denied. |
+| `404` | The resource exists but not in a workspace you can reach. Kordio does not confirm existence across a tenancy boundary. |
+
+<Note>
+  A `404` where you expected a `403` is usually a workspace mismatch, not a missing record.
+</Note>
 
 See the full [errors reference](/errors) for every code the API returns.

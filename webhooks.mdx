@@ -6,7 +6,44 @@ description: "Subscribe to events, verify HMAC-SHA256 signatures, and replay fro
 
 Webhooks push a signed copy of every state-changing event to an endpoint you control. The same payloads are also available to pull from the [events tail](#events-tail-and-replay), so you can choose push, pull, or both.
 
-## Register an endpoint
+There are two places to subscribe, because there are two products. **Control layer** events are per workspace and tell you what your agents were allowed to do. **Ledger** events are per tenant and tell you what was written to the books. Both sign deliveries the same way, so one verification routine covers both.
+
+## Control layer events
+
+Register per workspace:
+
+```bash
+curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/webhook_endpoints \
+  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://app.example.com/webhooks/kordio",
+    "enabled_events": ["action.requires_approval", "approval.resolved", "budget.low"]
+  }'
+```
+
+The response carries `secret` exactly once. Store it immediately; if you lose it, rotate the endpoint.
+
+| Type | Fires when |
+| --- | --- |
+| `action.requires_approval` | A rule held an action for a person. **The one to subscribe to.** |
+| `action.completed` | An agent reported an authorized action succeeded |
+| `action.failed` | An agent reported it failed; the reservation is released |
+| `payment.requires_approval` | A payment is held for a person |
+| `payment.executed` | A payment was carried out by the provider |
+| `payment.failed` | A payment failed; the reservation is released |
+| `approval.resolved` | A person approved or denied. The payload carries which, and who |
+| `budget.low` | A session is close to exhausting its envelope |
+
+`action.requires_approval` paired with `approval.resolved` is how an agent waits without polling. Everything else is for your own dashboards and alerting.
+
+<Warning>
+  Never treat `approval.resolved` as permission on its own. It tells you a decision was made, not what it was. Read the outcome, and for anything that moves money verify the [cosignature](/agents/cosignatures) at the point of execution.
+</Warning>
+
+## Ledger events
+
+Register per tenant:
 
 Create a webhook endpoint with the URL to deliver to and the events you want. The response includes a `signing_secret` used to verify deliveries.
 
@@ -38,9 +75,9 @@ curl -X POST https://api.kordio.io/v1/webhook_endpoints \
   The `signing_secret` is returned only once, at creation. Store it immediately. If you lose it, rotate the endpoint's secret to mint a new one.
 </Warning>
 
-## Event types
+### Ledger event types
 
-Each delivery carries an event whose `type` names what happened. The available types include:
+Each delivery carries an event whose `type` names what happened:
 
 | Type | Fires when |
 | --- | --- |
@@ -67,7 +104,7 @@ Ingestion itself emits no per-row events; a 10k-row batch would flood the stream
 
 ## Verify the signature
 
-Each delivery includes a `Kordio-Signature` header. The signature is an HMAC-SHA256 over the string `<timestamp>.<raw_body>`, keyed by your endpoint's signing secret:
+This applies to both surfaces. Each delivery includes a `Kordio-Signature` header. The signature is an HMAC-SHA256 over the string `<timestamp>.<raw_body>`, keyed by your endpoint's signing secret:
 
 ```
 signature = HMAC-SHA256(signing_secret, "<timestamp>.<raw_body>")

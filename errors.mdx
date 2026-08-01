@@ -47,6 +47,52 @@ Switch on `code`. It is stable across versions. Do not parse `message`; it is fo
 
 `500` - An unexpected error occurred. Retry the request; if it persists, contact support.
 
+## Control layer
+
+The agent API answers a denied decision with `403` and the whole decision in the body, not just a code. The rule that refused is in `decision.rule`, and `decision.headroom` reports what is left on every limit that applied, so an agent can pick a cheaper path instead of retrying into the same wall.
+
+```json
+{
+  "data": { "id": "9b2e…", "state": "denied" },
+  "decision": {
+    "outcome": "denied",
+    "rule": "cost_cap",
+    "detail": { "max_cents": 50000, "requested_cents": 120000 },
+    "headroom": { "session_remaining_cents": 380000 }
+  }
+}
+```
+
+The rules that can refuse:
+
+| `decision.rule` | Why |
+| --- | --- |
+| `session_active` | The session is exhausted or closed. Open a new one. |
+| `runtime_scope` | The runtime key is not scoped for this `action_type`. |
+| `session_budget` | The action does not fit the remaining session envelope. |
+| `cost_cap` | Over the per-action ceiling. |
+| `spend_window` | Over the rolling-window cap. |
+| `monthly_spend_cap` | Over the calendar-month cap. |
+| `rate_limit` | Too many actions in the window, regardless of amount. |
+| `action_allowlist` | This action type is not permitted. |
+| `resource_allowlist` | This counterparty or resource is not permitted. |
+| `not_allowlisted` | An allowlist-mode policy matched no `allow` rule. |
+| `spend_token` | The token is spent, expired, over its ceiling, or pinned to another counterparty. |
+
+An `approval_threshold` never appears here. It does not refuse; it answers `202` and holds the action. See [holding spend for a person](/agents/approvals).
+
+### missing_idempotency_key
+
+`400`. `POST /v1/agent/actions` and `POST /v1/agent/payment_intents` require an `Idempotency-Key` header. Reuse the same key on a retry and Kordio replays the original decision rather than reserving budget twice.
+
+### live_provider_unavailable
+
+`503`. A live payment provider could not be reached. The decision stands and the reservation is held; retry the execution rather than re-authorizing.
+
+<Warning>
+  A `403` from the agent API is a policy answer, not a transport failure. Do not retry it with a fresh idempotency key: that asks the same question again and, for a held action, asks a person twice. Change the action or change the policy.
+</Warning>
+
 ## Ledger semantics
 
 ### missing_idempotency_key
