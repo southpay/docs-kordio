@@ -2797,7 +2797,7 @@ components:
 
   responses:
     AgentUnauthorized:
-      description: Missing (`agent_key_required`) or unrecognised (`invalid_agent_key`) agent key.
+      description: Missing (`runtime_key_required`) or unrecognised (`invalid_runtime_key`) agent key.
       content:
         application/json:
           schema:
@@ -2805,7 +2805,7 @@ components:
           example:
             error:
               message: Agent key is required
-              code: agent_key_required
+              code: runtime_key_required
     IdentityUnauthorized:
       description: Missing or invalid identity token.
       content:
@@ -2880,8 +2880,9 @@ components:
                 Stable where present, `null` otherwise. Only a defined set of failures carry
                 a code.
               enum:
-                - agent_key_required
-                - invalid_agent_key
+                - runtime_key_required
+                - invalid_runtime_key
+                - idempotency_conflict
                 - insufficient_role
                 - idempotency_key_required
                 - authorization_required
