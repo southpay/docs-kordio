@@ -3,11 +3,11 @@ title: "Spend control"
 sidebarTitle: "Overview"
 description: "Decide what an agent may do before it does it, and sign the answer."
 icon: "shield-check"
-keywords: ["runtime", "session", "policy", "intent", "cosignature", "headroom"]
+keywords: ["agent", "budget", "policy", "intent", "cosignature", "headroom"]
 ---
 
 Spend control answers one question, and it answers it the same way for a payment, a paid tool
-call, or anything else an agent asks for: **may this runtime take this action, right now?**
+call, or anything else an agent asks for: **may this agent take this action, right now?**
 The answer comes back in the same request, naming the rule that decided, and an allowed answer
 comes back signed.
 
@@ -25,20 +25,20 @@ comes back signed.
 Six terms cover the whole API. They are the words in the wire format, so they are worth
 learning exactly.
 
-### Runtime
+### Agent
 
 A scoped identity for one agent workload. Holds a hashed `krt_` API key, a mode (`test` or
 `live`), and a list of action types the key may even ask about. One per agent workload;
-runtimes are unlimited on every paid plan.
+agents are unlimited on every paid plan.
 
-### Session
+### Budget
 
 A budget envelope for one run. Spend is committed against it, and it is the unit that stops a
-loop rather than a single mistake. Sessions can delegate to child sessions.
+loop rather than a single mistake. Budgets can delegate to child budgets.
 
 ### Policy
 
-The rules attached to a runtime. Caps, windows, rate limits, allowlists, approval thresholds,
+The rules attached to an agent. Caps, windows, rate limits, allowlists, approval thresholds,
 and a condition language for everything they do not cover. Policy is data, not code: it
 validates when you write it, not when an agent is waiting.
 

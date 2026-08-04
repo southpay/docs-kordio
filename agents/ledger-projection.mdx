@@ -15,8 +15,8 @@ a balance query, not an archaeology project across application logs.
 
 ## The account layout
 
-Each workspace owns its own books, and each runtime owns an account inside them, named
-`spend:{runtime_id}`. So the accounting graph mirrors your agent topology without you designing
+Each workspace owns its own books, and each agent owns an account inside them, named
+`spend:{agent_id}`. So the accounting graph mirrors your agent topology without you designing
 one.
 
 ```bash
@@ -37,7 +37,7 @@ curl https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/funds \
     "accounts": [
       {
         "account_id": "spend:7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
-        "runtime_id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
+        "agent_id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
         "runtime_name": "procurement agent",
         "committed_cents": 228000,
         "held_cents": 240000,
@@ -52,7 +52,7 @@ curl https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/funds \
 
 | Field | Means |
 | --- | --- |
-| `available_cents` | Unspent budget across every active session. |
+| `available_cents` | Unspent budget across every active budget. |
 | `held_cents` | Reserved by intents waiting on a person. |
 | `committed_cents` | Spent, as the control layer sees it. This is the authoritative number. |
 | `ledger_committed_cents` | Posted to the ledger so far. |
@@ -87,7 +87,7 @@ Two things are worth knowing before you query them:
 - **Intents carry `ledger_transaction_id`** once projected, so you can go from a decision to its
   postings directly rather than matching on amount and timestamp.
 - **The ledger knows nothing about agents.** It speaks accounts, postings, transactions and
-  balances. `spend:{runtime_id}` is just an account id we chose; no ledger code path treats it
+  balances. `spend:{agent_id}` is just an account id we chose; no ledger code path treats it
   specially.
 
 ## Availability

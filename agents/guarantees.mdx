@@ -12,10 +12,10 @@ product does **not** guarantee.
 
 ## Decisions fail closed
 
-**A runtime with no active policy denies everything**, with the rule `no_policy`. The three
+**An agent with no active policy denies everything**, with the rule `no_policy`. The three
 intrinsic rules do not count as a policy.
 
-*What this removes:* the window between creating a runtime and writing its rules, during which
+*What this removes:* the window between creating an agent and writing its rules, during which
 a misconfigured agent would otherwise have unlimited authority. The common failure in
 policy-engine deployments is a default-allow gap at setup time. There is none here.
 
@@ -32,10 +32,10 @@ matched.
 
 ## Scopes are checked before policy
 
-A runtime key carries an action-type allowlist enforced by an intrinsic rule, so a request
+An agent key carries an action-type allowlist enforced by an intrinsic rule, so a request
 outside it is refused as `runtime_scope` before any policy is consulted.
 
-*What this removes:* a policy misconfiguration granting a runtime authority over action types it
+*What this removes:* a policy misconfiguration granting an agent authority over action types it
 was never issued for. Scope is a property of the credential, not of the rules attached to it.
 
 ## Reservations are released, not stranded
@@ -43,13 +43,13 @@ was never issued for. Scope is a property of the credential, not of the rules at
 Budget is reserved when an action is authorized or held, and released when it fails, is denied,
 or its approval is refused.
 
-*What this removes:* a crashed agent permanently consuming a session's budget. What it does
+*What this removes:* a crashed agent permanently consuming a budget's budget. What it does
 **not** remove: an intent left `pending` because nobody called `complete` or `fail` holds its
-reservation until the session closes. Reporting the outcome is part of the contract.
+reservation until the budget closes. Reporting the outcome is part of the contract.
 
 ## Replay returns the original decision, not a new one
 
-Each `(runtime, idempotency_key)` maps to exactly one intent forever. A replay returns the
+Each `(agent, idempotency_key)` maps to exactly one intent forever. A replay returns the
 stored intent **and the stored decision**, at the original HTTP status.
 
 *What this removes:* a retry under network failure double-reserving budget, and a retry after a
@@ -58,7 +58,7 @@ the record, not a recomputation.
 
 ## Concurrent spend contends without queueing
 
-Session budget is claimed with a single conditional update rather than a lock.
+Budget budget is claimed with a single conditional update rather than a lock.
 
 *What this removes:* both the race where parallel sub-agents each read sufficient budget and both
 succeed, and the serialization bottleneck that a lock would impose on a fan-out. Exactly one
@@ -88,11 +88,11 @@ ledger at all. The gap is observable as `unprojected_cents` on the workspace fun
 
 ## Revocation is not retroactive
 
-Suspending or revoking a runtime stops new authorizations. It does **not** rewrite decisions
+Suspending or revoking an agent stops new authorizations. It does **not** rewrite decisions
 already made, and it does **not** invalidate a cosignature already issued.
 
 *What this removes:* nothing. This is a limit, stated so you can size it. A cosignature's default
-lifetime is five minutes, so revoking a compromised runtime leaves at most that window in which
+lifetime is five minutes, so revoking a compromised agent leaves at most that window in which
 an already-issued signature still verifies offline. If that window matters to you, verify through
 `POST /v1/cosign/verify` rather than locally: it re-checks the intent's state and will report
 `already_settled` for anything spent.

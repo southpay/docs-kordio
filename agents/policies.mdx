@@ -21,7 +21,7 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policies \
   -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-    \"runtime_id\": \"$KORDIO_RUNTIME_ID\",
+    \"agent_id\": \"$KORDIO_AGENT_ID\",
     \"per_transaction_cap_cents\": 50000,
     \"approval_threshold_cents\": 20000,
     \"velocity_cap_cents\": 200000,
@@ -106,8 +106,8 @@ consumes the other's headroom.
 **Combinators** are `all_of`, `any_of` and `not`, nestable to ten levels. An empty `all_of` or
 `any_of` is rejected at write time.
 
-**Fields** are `action_type`, `resource`, `cost_cents`, `currency`, `runtime_id`,
-`runtime_mode`, `session_id`, and any `metadata.*` dot path.
+**Fields** are `action_type`, `resource`, `cost_cents`, `currency`, `agent_id`,
+`runtime_mode`, `budget_id`, and any `metadata.*` dot path.
 
 **Operators** are `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `not_in`, `contains`,
 `starts_with`, `ends_with`, `exists`.
@@ -132,7 +132,7 @@ rules matches, reported as the rule `not_allowlisted`. A `deny` rule still overr
 Each allowlist policy is an independent gate. Attach two and both must be satisfied.
 
 <Warning>
-  Allowlist mode is the right default for a runtime that touches real money. Start by denying
+  Allowlist mode is the right default for an agent that touches real money. Start by denying
   everything and naming what you permit, rather than trying to enumerate every way an agent
   could go wrong.
 </Warning>
@@ -152,7 +152,7 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policy_module
 ```
 
 ```json
-{ "runtime_id": "7d2a...", "imports": ["vendor-allowlist"], "rules": [] }
+{ "agent_id": "7d2a...", "imports": ["vendor-allowlist"], "rules": [] }
 ```
 
 Modules are addressed by `name`, not by id, so `GET /v1/workspaces/{slug}/policy_modules/vendor-allowlist`
@@ -171,7 +171,7 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policy_previe
   -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-    \"runtime_id\": \"$KORDIO_RUNTIME_ID\",
+    \"agent_id\": \"$KORDIO_AGENT_ID\",
     \"action_type\": \"payment.create\",
     \"cost_cents\": 75000,
     \"policy\": { \"per_transaction_cap_cents\": 50000 }
@@ -190,9 +190,9 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policy_previe
 }
 ```
 
-Nothing is persisted: no policy, no session, no intent, no audit event. `imports` resolve
+Nothing is persisted: no policy, no budget, no intent, no audit event. `imports` resolve
 against the workspace's real saved modules, so you can preview a draft that builds on modules
-already in place. `session_budget_cents` sets the synthetic session budget and defaults to
+already in place. `session_budget_cents` sets the synthetic budget and defaults to
 `100000`.
 
 Previewing needs only the `read` capability, deliberately: it is not a mutation.

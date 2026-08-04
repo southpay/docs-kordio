@@ -9,12 +9,12 @@ info:
 
     Two credentials reach this API and they are deliberately not interchangeable.
 
-    A **runtime key** (`krt_live_…` or `krt_test_…`) is what an agent carries. It reaches
-    `/v1/agent/*` and can ask for authorization, but it can never write policy. A runtime
+    A **agent key** (`krt_live_…` or `krt_test_…`) is what an agent carries. It reaches
+    `/v1/agent/*` and can ask for authorization, but it can never write policy. An agent
     able to widen its own limits is not governed by them.
 
     An **identity token** is what a person or your backend carries. It reaches
-    `/v1/workspaces/{workspace_slug}/*` and manages runtimes, policy, approvals and
+    `/v1/workspaces/{workspace_slug}/*` and manages agents, policy, approvals and
     members. It can never authorize an action as an agent.
 
     Cosignature verification needs no credential at all.
@@ -33,28 +33,28 @@ externalDocs:
   url: https://docs.kordio.io/agents
 
 security:
-  - RuntimeKey: []
+  - AgentKey: []
 
 tags:
   - name: Actions
     description: >-
       The authorization call that goes in front of a spend, and the outcome reports that
-      settle or release its reservation. Runtime key.
-  - name: Sessions
-    description: Budget envelopes for one agent run. Runtime key.
+      settle or release its reservation. Agent key.
+  - name: Budgets
+    description: Budget envelopes for one agent run. Agent key.
   - name: Spend tokens
     description: >-
       Single-use, pre-authorized ceilings an agent mints against its own session and
-      presents later on a payment. Runtime key.
+      presents later on a payment. Agent key.
   - name: Payment intents
     description: >-
-      Authorize and execute a payment in one call. Runtime key.
+      Authorize and execute a payment in one call. Agent key.
   - name: Cosignatures
     description: Verify a signed authorization. Unauthenticated.
-  - name: Runtimes
+  - name: Agents
     description: Scoped identities for agent workloads. Identity token.
   - name: Policies
-    description: The rules attached to a runtime. Identity token.
+    description: The rules attached to an agent. Identity token.
   - name: Policy modules
     description: Named, reusable rule sets a policy imports by name. Identity token.
   - name: Policy previews
@@ -87,16 +87,16 @@ paths:
       summary: Authorize an action
       description: |
         The call that goes in front of the spend. Runs the full policy evaluation, reserves
-        budget against the session, records an intent, and returns the decision.
+        budget against the budget, records an intent, and returns the decision.
 
         Branch on the **status code**, not the body.
 
         An intent is recorded even when the outcome is `denied`, so a refusal is auditable.
 
-        A runtime with no active policy denies everything, with rule `no_policy`. This is
+        An agent with no active policy denies everything, with rule `no_policy`. This is
         deliberate and fail-closed: write a policy before you expect an allow.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       parameters:
         - $ref: '#/components/parameters/IdempotencyKeyRequired'
       requestBody:
@@ -109,7 +109,7 @@ paths:
               payment:
                 summary: A vendor payment
                 value:
-                  session_id: 3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83
+                  budget_id: 3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83
                   action_type: payment.create
                   resource: acme-supplies.example
                   cost_cents: 12000
@@ -118,7 +118,7 @@ paths:
               toolCall:
                 summary: A paid tool call that spends nothing directly
                 value:
-                  session_id: 3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83
+                  budget_id: 3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83
                   action_type: tool.invoke
                   resource: api.example.com
                   cost_cents: 0
@@ -135,8 +135,8 @@ paths:
                 data:
                   id: 9b2ef0c1-6a3d-4e75-8c19-2f4b7d5a0e63
                   workspace_id: 1c4f8b20-9e77-4a31-b5d2-06a8c3e91f4d
-                  runtime_id: 7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2
-                  session_id: 3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83
+                  agent_id: 7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2
+                  budget_id: 3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83
                   action_type: payment.create
                   resource: acme-supplies.example
                   cost_cents: 12000
@@ -207,9 +207,9 @@ paths:
                     session_remaining_cents: 380000
                   policy_snapshot: []
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          description: The session does not belong to this runtime.
+          description: The budget does not belong to this agent.
           content:
             application/json:
               schema:
@@ -242,7 +242,7 @@ paths:
         they save it. Note that a simulation does write an `action.simulated` audit event,
         so simulations are still visible in the trail.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       requestBody:
         required: true
         content:
@@ -261,9 +261,9 @@ paths:
                   data:
                     $ref: '#/components/schemas/Decision'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          description: The session does not belong to this runtime.
+          description: The budget does not belong to this agent.
           content:
             application/json:
               schema:
@@ -280,7 +280,7 @@ paths:
         The current state of one intent. This is what you poll while an action sits in
         `requires_approval`, if you are not using webhooks.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       parameters:
         - $ref: '#/components/parameters/PathId'
       responses:
@@ -291,9 +291,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ActionIntentEnvelope'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFoundForRuntime'
+          $ref: '#/components/responses/NotFoundForAgent'
 
   /v1/agent/actions/{id}/complete:
     post:
@@ -307,20 +307,20 @@ paths:
         Reporting is not optional. An intent left `pending` holds its budget until the
         session closes.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       parameters:
         - $ref: '#/components/parameters/PathId'
       responses:
         '200':
-          description: The settled intent.
+          description: The executed intent.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ActionIntentEnvelope'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFoundForRuntime'
+          $ref: '#/components/responses/NotFoundForAgent'
         '422':
           description: >-
             The intent is not in a state that can be completed. Only `pending` intents
@@ -336,10 +336,10 @@ paths:
       operationId: failAction
       summary: Report failure
       description: >-
-        The action failed. Releases the reservation back to the session budget and moves
+        The action failed. Releases the reservation back to the budget and moves
         the intent from `pending` or `requires_approval` to `failed`.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       parameters:
         - $ref: '#/components/parameters/PathId'
       requestBody:
@@ -363,9 +363,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ActionIntentEnvelope'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFoundForRuntime'
+          $ref: '#/components/responses/NotFoundForAgent'
         '422':
           description: The intent is not in a state that can fail.
           content:
@@ -373,19 +373,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /v1/agent/sessions:
+  /v1/agent/budgets:
     post:
-      tags: [Sessions]
+      tags: [Budgets]
       operationId: createSession
-      summary: Open a session
+      summary: Open a budget
       description: |
-        A session is the budget envelope for one agent run. Every authorized action commits
+        A budget is the budget envelope for one agent run. Every authorized action commits
         against it, and it is what a runaway loop runs into.
 
         Budget is claimed with a single conditional update rather than a lock, so parallel
-        sub-agents under one runtime contend at the row instead of queueing.
+        sub-agents under one agent contend at the row instead of queueing.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       requestBody:
         required: true
         content:
@@ -403,12 +403,12 @@ paths:
                   type: string
                   default: USD
                   example: USD
-                parent_session_id:
+                parent_budget_id:
                   type: string
                   format: uuid
                   nullable: true
                   description: >-
-                    Delegates from an existing session belonging to the same runtime.
+                    Delegates from an existing session belonging to the same agent.
       responses:
         '201':
           description: The open session.
@@ -417,9 +417,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/SessionEnvelope'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          description: The parent session does not belong to this runtime.
+          description: The parent session does not belong to this agent.
           content:
             application/json:
               schema:
@@ -427,27 +427,27 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationFailed'
 
-  /v1/agent/sessions/{id}:
+  /v1/agent/budgets/{id}:
     get:
-      tags: [Sessions]
+      tags: [Budgets]
       operationId: getSession
-      summary: Read a session
-      description: Read the remaining budget on a session.
+      summary: Read a budget
+      description: Read the remaining budget on a budget.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       parameters:
         - $ref: '#/components/parameters/PathId'
       responses:
         '200':
-          description: The session.
+          description: The budget.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionEnvelope'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFoundForRuntime'
+          $ref: '#/components/responses/NotFoundForAgent'
 
   /v1/agent/spend_tokens:
     post:
@@ -456,7 +456,7 @@ paths:
       summary: Mint a spend token
       description: |
         A spend token is a single-use ceiling an agent mints against one of its own
-        sessions and presents later on `POST /v1/agent/payment_intents` via
+        budgets and presents later on `POST /v1/agent/payment_intents` via
         `spend_token_id`.
 
         It only ever narrows. A token cannot widen a policy, raise a cap, or authorize
@@ -466,16 +466,16 @@ paths:
         Pin it to a `counterparty` when you know the payee in advance. That turns "this
         agent may spend $200" into "this agent may spend $200, once, to this vendor".
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [session_id, amount_ceiling_cents]
+              required: [budget_id, amount_ceiling_cents]
               properties:
-                session_id:
+                budget_id:
                   type: string
                   format: uuid
                 amount_ceiling_cents:
@@ -502,9 +502,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/SpendTokenEnvelope'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          description: The session does not belong to this runtime.
+          description: The budget does not belong to this agent.
           content:
             application/json:
               schema:
@@ -519,7 +519,7 @@ paths:
       summary: Authorize and execute a payment
       description: |
         Evaluated as the action type `payment.create` with the counterparty as its
-        resource, so a runtime's caps, windows and allowlists apply across payments and
+        resource, so an agent's caps, windows and allowlists apply across payments and
         other actions together. Spend on one consumes headroom for the other.
 
         Two differences from `POST /v1/agent/actions` that will bite you if you assume
@@ -531,16 +531,16 @@ paths:
           `state` is already `executed` or `failed`, not `pending`. There is no `complete`
           call to make.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [session_id, amount_cents, idempotency_key]
+              required: [budget_id, amount_cents, idempotency_key]
               properties:
-                session_id:
+                budget_id:
                   type: string
                   format: uuid
                 amount_cents:
@@ -551,7 +551,7 @@ paths:
                   type: string
                   description: >-
                     Required, and sent in the body rather than as a header. Unique per
-                    runtime. A replay returns the original intent and decision at the
+                    agent. A replay returns the original intent and decision at the
                     original status.
                   example: order-4471-attempt-1
                 counterparty:
@@ -562,7 +562,7 @@ paths:
                   type: string
                   format: uuid
                   nullable: true
-                  description: A token minted by this runtime against the same session.
+                  description: A token minted by this agent against the same session.
                 trace_id:
                   type: string
                   nullable: true
@@ -584,8 +584,8 @@ paths:
                 data:
                   id: 4a7c2e18-9b05-4f63-8d21-6e0a3c7f5b94
                   workspace_id: 1c4f8b20-9e77-4a31-b5d2-06a8c3e91f4d
-                  runtime_id: 7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2
-                  session_id: 3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83
+                  agent_id: 7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2
+                  budget_id: 3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83
                   spend_token_id: null
                   amount_cents: 12000
                   currency: USD
@@ -625,9 +625,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentDecisionResponse'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          description: The session or spend token does not belong to this runtime.
+          description: The budget or spend token does not belong to this agent.
           content:
             application/json:
               schema:
@@ -652,16 +652,16 @@ paths:
       summary: Simulate a payment
       description: Evaluates without reserving, recording, or executing. Always `200`.
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [session_id, amount_cents]
+              required: [budget_id, amount_cents]
               properties:
-                session_id:
+                budget_id:
                   type: string
                   format: uuid
                 amount_cents:
@@ -685,7 +685,7 @@ paths:
                   data:
                     $ref: '#/components/schemas/Decision'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
 
   /v1/agent/payment_intents/{id}:
     get:
@@ -693,7 +693,7 @@ paths:
       operationId: getPaymentIntent
       summary: Read a payment intent
       security:
-        - RuntimeKey: []
+        - AgentKey: []
       parameters:
         - $ref: '#/components/parameters/PathId'
       responses:
@@ -704,9 +704,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaymentIntentEnvelope'
         '401':
-          $ref: '#/components/responses/RuntimeUnauthorized'
+          $ref: '#/components/responses/AgentUnauthorized'
         '404':
-          $ref: '#/components/responses/NotFoundForRuntime'
+          $ref: '#/components/responses/NotFoundForAgent'
 
   /v1/cosign/verify:
     post:
@@ -719,7 +719,7 @@ paths:
 
         That statefulness is the reason to use this endpoint rather than local
         verification: a signature proves authority was granted, not that it has not
-        already been used. A settled intent reports `already_settled`.
+        already been used. An intent that has already been spent reports `already_settled`.
 
         For the hot path, verify offline against the JWKS instead. This endpoint is for
         when you need settlement state.
@@ -938,7 +938,7 @@ paths:
       operationId: exportWorkspace
       summary: Export a workspace
       description: >-
-        A full JSON dump of the workspace: runtimes, policies, policy modules, sessions,
+        A full JSON dump of the workspace: agents, policies, policy modules, budgets,
         spend tokens, action and payment intents, audit events, memberships, webhook
         endpoints, entitlement grants and the subscription. Requires `manage_members`.
       security:
@@ -966,11 +966,11 @@ paths:
         '404':
           $ref: '#/components/responses/WorkspaceNotFound'
 
-  /v1/workspaces/{workspace_slug}/runtimes:
+  /v1/workspaces/{workspace_slug}/agents:
     get:
-      tags: [Runtimes]
-      operationId: listRuntimes
-      summary: List runtimes
+      tags: [Agents]
+      operationId: listAgents
+      summary: List agents
       security:
         - IdentityToken: []
       parameters:
@@ -979,7 +979,7 @@ paths:
         - $ref: '#/components/parameters/StartingAfter'
       responses:
         '200':
-          description: A page of runtimes, newest first.
+          description: A page of agents, newest first.
           content:
             application/json:
               schema:
@@ -990,22 +990,22 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: '#/components/schemas/Runtime'
+                          $ref: '#/components/schemas/Agent'
         '401':
           $ref: '#/components/responses/IdentityUnauthorized'
         '404':
           $ref: '#/components/responses/WorkspaceNotFound'
     post:
-      tags: [Runtimes]
-      operationId: createRuntime
-      summary: Create a runtime
+      tags: [Agents]
+      operationId: createAgent
+      summary: Create an agent
       description: |
         Requires the `manage_policy` capability.
 
         The response carries `api_key` exactly once. Kordio stores only a digest and
-        compares it in constant time; if you lose the key, rotate the runtime.
+        compares it in constant time; if you lose the key, rotate the agent.
 
-        Creating a runtime consumes plan headroom, and creating a `live` runtime requires a
+        Creating an agent consumes plan headroom, and creating a `live` agent requires a
         plan with live mode. Either limit returns `422`.
       security:
         - IdentityToken: []
@@ -1040,7 +1040,7 @@ paths:
                   example: ["payment.*", "tool.invoke"]
       responses:
         '201':
-          description: The runtime, including its plaintext key.
+          description: The agent, including its plaintext key.
           content:
             application/json:
               schema:
@@ -1048,7 +1048,7 @@ paths:
                 properties:
                   data:
                     allOf:
-                      - $ref: '#/components/schemas/Runtime'
+                      - $ref: '#/components/schemas/Agent'
                       - type: object
                         properties:
                           api_key:
@@ -1066,11 +1066,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /v1/workspaces/{workspace_slug}/runtimes/{id}:
+  /v1/workspaces/{workspace_slug}/agents/{id}:
     get:
-      tags: [Runtimes]
-      operationId: getRuntime
-      summary: Read a runtime
+      tags: [Agents]
+      operationId: getAgent
+      summary: Read an agent
       security:
         - IdentityToken: []
       parameters:
@@ -1078,22 +1078,22 @@ paths:
         - $ref: '#/components/parameters/PathId'
       responses:
         '200':
-          description: The runtime. Never includes the key.
+          description: The agent. Never includes the key.
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Runtime'
+                    $ref: '#/components/schemas/Agent'
         '404':
           $ref: '#/components/responses/WorkspaceNotFound'
     patch:
-      tags: [Runtimes]
-      operationId: updateRuntime
-      summary: Update a runtime
+      tags: [Agents]
+      operationId: updateAgent
+      summary: Update an agent
       description: |
-        Requires `manage_policy`. Use this to suspend, revoke, or re-scope a runtime.
+        Requires `manage_policy`. Use this to suspend, revoke, or re-scope an agent.
 
         Suspending stops new authorizations and leaves history intact. Revoking is
         permanent. Neither rewrites decisions already made, and neither invalidates a
@@ -1119,14 +1119,14 @@ paths:
                   items: { type: string }
       responses:
         '200':
-          description: The updated runtime.
+          description: The updated agent.
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Runtime'
+                    $ref: '#/components/schemas/Agent'
         '403':
           $ref: '#/components/responses/InsufficientRole'
         '404':
@@ -1143,7 +1143,7 @@ paths:
         - IdentityToken: []
       parameters:
         - $ref: '#/components/parameters/WorkspaceSlug'
-        - name: runtime_id
+        - name: agent_id
           in: query
           schema: { type: string, format: uuid }
         - $ref: '#/components/parameters/Limit'
@@ -1192,7 +1192,7 @@ paths:
               typedColumns:
                 summary: The common cases, using the typed columns
                 value:
-                  runtime_id: 7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2
+                  agent_id: 7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2
                   per_transaction_cap_cents: 50000
                   approval_threshold_cents: 20000
                   velocity_cap_cents: 200000
@@ -1200,7 +1200,7 @@ paths:
               rules:
                 summary: The general rules array
                 value:
-                  runtime_id: 7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2
+                  agent_id: 7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2
                   mode: allowlist
                   imports: ["vendor-allowlist"]
                   rules:
@@ -1496,9 +1496,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [runtime_id, action_type]
+              required: [agent_id, action_type]
               properties:
-                runtime_id: { type: string, format: uuid }
+                agent_id: { type: string, format: uuid }
                 action_type: { type: string, example: payment.create }
                 resource: { type: string, nullable: true }
                 cost_cents: { type: integer, example: 75000 }
@@ -1564,23 +1564,23 @@ paths:
         '404':
           $ref: '#/components/responses/WorkspaceNotFound'
 
-  /v1/workspaces/{workspace_slug}/sessions:
+  /v1/workspaces/{workspace_slug}/budgets:
     get:
-      tags: [Sessions]
+      tags: [Budgets]
       operationId: listWorkspaceSessions
-      summary: List sessions
+      summary: List budgets
       security:
         - IdentityToken: []
       parameters:
         - $ref: '#/components/parameters/WorkspaceSlug'
-        - name: runtime_id
+        - name: agent_id
           in: query
           schema: { type: string, format: uuid }
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/StartingAfter'
       responses:
         '200':
-          description: A page of sessions.
+          description: A page of budgets.
           content:
             application/json:
               schema:
@@ -1595,11 +1595,11 @@ paths:
         '404':
           $ref: '#/components/responses/WorkspaceNotFound'
 
-  /v1/workspaces/{workspace_slug}/sessions/{id}:
+  /v1/workspaces/{workspace_slug}/budgets/{id}:
     get:
-      tags: [Sessions]
+      tags: [Budgets]
       operationId: getWorkspaceSession
-      summary: Read a session
+      summary: Read a budget
       security:
         - IdentityToken: []
       parameters:
@@ -1607,7 +1607,7 @@ paths:
         - $ref: '#/components/parameters/PathId'
       responses:
         '200':
-          description: The session.
+          description: The budget.
           content:
             application/json:
               schema:
@@ -1625,7 +1625,7 @@ paths:
         - IdentityToken: []
       parameters:
         - $ref: '#/components/parameters/WorkspaceSlug'
-        - name: session_id
+        - name: budget_id
           in: query
           schema: { type: string, format: uuid }
         - $ref: '#/components/parameters/Limit'
@@ -1678,10 +1678,10 @@ paths:
         - IdentityToken: []
       parameters:
         - $ref: '#/components/parameters/WorkspaceSlug'
-        - name: runtime_id
+        - name: agent_id
           in: query
           schema: { type: string, format: uuid }
-        - name: session_id
+        - name: budget_id
           in: query
           schema: { type: string, format: uuid }
         - name: state
@@ -1738,7 +1738,7 @@ paths:
       summary: What approving this would do
       description: |
         Everything an approver needs to decide, before they click: the amount, the rule that
-        held it, the session budget it draws on, how much comes back if it is denied, how
+        held it, the budget it draws on, how much comes back if it is denied, how
         many other holds compete for the same budget, and every window it consumes.
 
         Budget is already reserved while an intent is held, so approving costs no further
@@ -1808,7 +1808,7 @@ paths:
       summary: Deny a held action
       description: >-
         Requires `approve`. Moves the intent to `denied` and releases the reserved budget
-        back to the session.
+        back to the budget.
       security:
         - IdentityToken: []
       parameters:
@@ -1851,17 +1851,17 @@ paths:
         - IdentityToken: []
       parameters:
         - $ref: '#/components/parameters/WorkspaceSlug'
-        - name: runtime_id
+        - name: agent_id
           in: query
           schema: { type: string, format: uuid }
-        - name: session_id
+        - name: budget_id
           in: query
           schema: { type: string, format: uuid }
         - name: state
           in: query
           schema:
             type: string
-            enum: [pending, requires_approval, executed, settled, failed, denied]
+            enum: [pending, requires_approval, executed, failed, denied]
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/StartingAfter'
       responses:
@@ -2025,7 +2025,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [Session, SpendToken, ActionIntent, PaymentIntent, Policy, PolicyModule, Runtime, Workspace, WorkspaceMembership, WorkspaceInvitation, Subscription]
+            enum: [Session, SpendToken, ActionIntent, PaymentIntent, Policy, PolicyModule, Agent, Workspace, WorkspaceMembership, WorkspaceInvitation, Subscription]
         - name: subject_id
           in: query
           schema: { type: string, format: uuid }
@@ -2733,11 +2733,11 @@ paths:
 components:
 
   securitySchemes:
-    RuntimeKey:
+    AgentKey:
       type: http
       scheme: bearer
       description: >-
-        A runtime API key, `krt_live_…` or `krt_test_…`, shown exactly once at creation.
+        An agent API key, `krt_live_…` or `krt_test_…`, shown exactly once at creation.
         Kordio stores only a digest. This credential can ask for authorization and can
         never write policy.
     IdentityToken:
@@ -2754,7 +2754,7 @@ components:
       in: header
       required: true
       description: >-
-        Unique per action, scoped to the runtime. A replay returns the original intent and
+        Unique per action, scoped to the agent. A replay returns the original intent and
         the original decision, at the original status, rather than reserving budget twice.
       schema:
         type: string
@@ -2796,25 +2796,25 @@ components:
       schema: { type: string, format: uuid }
 
   responses:
-    RuntimeUnauthorized:
-      description: Missing (`runtime_key_required`) or unrecognised (`invalid_runtime_key`) runtime key.
+    AgentUnauthorized:
+      description: Missing (`agent_key_required`) or unrecognised (`invalid_agent_key`) agent key.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             error:
-              message: Runtime key is required
-              code: runtime_key_required
+              message: Agent key is required
+              code: agent_key_required
     IdentityUnauthorized:
       description: Missing or invalid identity token.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-    NotFoundForRuntime:
+    NotFoundForAgent:
       description: >-
-        The record does not belong to this runtime. Kordio does not confirm existence across
+        The record does not belong to this agent. Kordio does not confirm existence across
         a tenancy boundary, so this is a `404` rather than a `403`.
       content:
         application/json:
@@ -2880,8 +2880,8 @@ components:
                 Stable where present, `null` otherwise. Only a defined set of failures carry
                 a code.
               enum:
-                - runtime_key_required
-                - invalid_runtime_key
+                - agent_key_required
+                - invalid_agent_key
                 - insufficient_role
                 - idempotency_key_required
                 - authorization_required
@@ -2929,7 +2929,7 @@ components:
           examples:
             - per_transaction_cap
             - session_budget
-            - runtime_scope
+            - agent_scope
             - session_inactive
             - no_policy
             - not_allowlisted
@@ -2952,12 +2952,12 @@ components:
 
     ActionRequest:
       type: object
-      required: [session_id, action_type]
+      required: [budget_id, action_type]
       properties:
-        session_id:
+        budget_id:
           type: string
           format: uuid
-          description: An active session belonging to this runtime.
+          description: An active session belonging to this agent.
         action_type:
           type: string
           pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$'
@@ -2988,8 +2988,8 @@ components:
       properties:
         id: { type: string, format: uuid }
         workspace_id: { type: string, format: uuid }
-        runtime_id: { type: string, format: uuid }
-        session_id: { type: string, format: uuid }
+        agent_id: { type: string, format: uuid }
+        budget_id: { type: string, format: uuid }
         action_type: { type: string }
         resource: { type: string, nullable: true }
         cost_cents: { type: integer }
@@ -3041,15 +3041,15 @@ components:
       properties:
         id: { type: string, format: uuid }
         workspace_id: { type: string, format: uuid }
-        runtime_id: { type: string, format: uuid }
-        session_id: { type: string, format: uuid }
+        agent_id: { type: string, format: uuid }
+        budget_id: { type: string, format: uuid }
         spend_token_id: { type: string, format: uuid, nullable: true }
         amount_cents: { type: integer }
         currency: { type: string }
         counterparty: { type: string, nullable: true }
         state:
           type: string
-          enum: [pending, requires_approval, executed, settled, failed, denied]
+          enum: [pending, requires_approval, executed, failed, denied]
         provider: { type: string, nullable: true }
         failure_reason: { type: string, nullable: true }
         resolved_by_sub: { type: string, nullable: true }
@@ -3083,8 +3083,8 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
-        runtime_id: { type: string, format: uuid }
-        parent_session_id: { type: string, format: uuid, nullable: true }
+        agent_id: { type: string, format: uuid }
+        parent_budget_id: { type: string, format: uuid, nullable: true }
         budget_cents: { type: integer }
         spent_cents: { type: integer }
         remaining_cents: { type: integer }
@@ -3106,7 +3106,7 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
-        session_id: { type: string, format: uuid }
+        budget_id: { type: string, format: uuid }
         amount_ceiling_cents: { type: integer }
         counterparty: { type: string, nullable: true }
         expires_at: { type: string, format: date-time, nullable: true }
@@ -3124,7 +3124,7 @@ components:
         data:
           $ref: '#/components/schemas/SpendToken'
 
-    Runtime:
+    Agent:
       type: object
       properties:
         id: { type: string, format: uuid }
@@ -3211,8 +3211,8 @@ components:
 
         A leaf is `{field, operator, value}`.
 
-        Fields are `action_type`, `resource`, `cost_cents`, `currency`, `runtime_id`,
-        `runtime_mode`, `session_id`, and any `metadata.*` dot path. A missing field never
+        Fields are `action_type`, `resource`, `cost_cents`, `currency`, `agent_id`,
+        `agent_mode`, `budget_id`, and any `metadata.*` dot path. A missing field never
         raises; it simply fails to match. Unknown fields and operators are rejected when the
         policy is written, never when an agent is waiting.
 
@@ -3242,7 +3242,7 @@ components:
 
     PolicyDraft:
       type: object
-      description: The policy shape, without a runtime binding. Used for previews.
+      description: The policy shape, without an agent binding. Used for previews.
       properties:
         mode:
           type: string
@@ -3274,7 +3274,7 @@ components:
       allOf:
         - type: object
           properties:
-            runtime_id:
+            agent_id:
               type: string
               format: uuid
               description: Required on create.
@@ -3290,7 +3290,7 @@ components:
         - type: object
           properties:
             id: { type: string, format: uuid }
-            runtime_id: { type: string, format: uuid }
+            agent_id: { type: string, format: uuid }
             status:
               type: string
               enum: [active, disabled]
@@ -3331,11 +3331,11 @@ components:
             remaining_cents: { type: integer }
             returns_on_deny_cents:
               type: integer
-              description: What denying gives back to the session.
+              description: What denying gives back to the budget.
             open_holds:
               type: integer
               description: How many other held intents compete for this same budget.
-        runtime:
+        agent:
           type: object
           properties:
             id: { type: string, format: uuid }
@@ -3373,7 +3373,7 @@ components:
           description: Reserved by intents waiting on a person.
         committed_cents:
           type: integer
-          description: Spent across active sessions, as the control layer sees it.
+          description: Spent across active budgets, as the control layer sees it.
         ledger_committed_cents:
           type: integer
           description: Posted to the ledger.
@@ -3394,8 +3394,8 @@ components:
             type: object
             properties:
               account_id: { type: string, example: "spend:7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2" }
-              runtime_id: { type: string, format: uuid }
-              runtime_name: { type: string }
+              agent_id: { type: string, format: uuid }
+              agent_name: { type: string }
               committed_cents: { type: integer }
               held_cents: { type: integer }
               currency: { type: string }
@@ -3431,7 +3431,7 @@ components:
             - policy_module.created
             - policy_module.updated
             - policy_module.deleted
-            - runtime.created
+            - agent.created
             - membership.created
             - membership.role_changed
             - membership.removed
@@ -3533,7 +3533,7 @@ components:
         valid: { type: boolean, const: true }
         reason: { type: string, nullable: true }
         intent_id: { type: string, format: uuid }
-        runtime_id: { type: string, format: uuid }
+        agent_id: { type: string, format: uuid }
         action_type: { type: string }
         resource: { type: string, nullable: true }
         amount_cents: { type: integer }
@@ -3571,7 +3571,7 @@ components:
         entitlements:
           type: object
           description: >-
-            Per-dimension `{limit, used, remaining}` for runtimes, members,
+            Per-dimension `{limit, used, remaining}` for agents, members,
             payment_authorizations, action_authorizations and authorized_volume, plus
             `live_mode`, `overage_cents`, `audit_retention_days` and the period bounds.
           additionalProperties: true

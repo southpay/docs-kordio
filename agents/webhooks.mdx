@@ -65,7 +65,7 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/webhook_endpo
 | `payment.executed` | A payment was carried out by the provider. |
 | `payment.failed` | A payment failed; the reservation is released. |
 | `approval.resolved` | A person approved or denied. On the payment path the payload carries `resolution`. |
-| `budget.low` | A session dropped to 10% or less of its budget after an executed payment. |
+| `budget.low` | A budget dropped to 10% or less of its budget after an executed payment. |
 | `spend_token.expired` | A spend token passed its expiry unused. |
 
 An unrecognised name in `enabled_events` is rejected with a `422` at registration.

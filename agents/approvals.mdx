@@ -55,7 +55,7 @@ idempotency key creates a second held intent and asks a person the same question
 
 ```bash
 curl https://api.kordio.io/v1/agent/actions/$KORDIO_ACTION_ID \
-  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY"
+  -H "Authorization: Bearer $KORDIO_AGENT_KEY"
 ```
 
 ## What the person sees
@@ -75,7 +75,7 @@ curl "https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/action_intents/$KORD
     "currency": "USD",
     "rule": "approval_threshold",
     "executed": false,
-    "session": {
+    "budget": {
       "id": "3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83",
       "budget_cents": 500000,
       "spent_cents": 240000,
@@ -83,7 +83,7 @@ curl "https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/action_intents/$KORD
       "returns_on_deny_cents": 240000,
       "open_holds": 2
     },
-    "runtime": {
+    "agent": {
       "id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
       "name": "procurement agent",
       "mode": "live",
@@ -100,8 +100,8 @@ curl "https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/action_intents/$KORD
 
 Two figures are worth reading carefully. Budget is **already reserved** while an intent is held,
 so approving costs no further headroom. `returns_on_deny_cents` is what denying gives back. And
-`open_holds` counts every other held intent competing for the same session budget, which is how
-an approver sees that three pending approvals total more than the session can cover.
+`open_holds` counts every other held intent competing for the same budget, which is how
+an approver sees that three pending approvals total more than the budget can cover.
 
 `GET .../payment_intents/{id}/impact` is the same shape, plus the spend token the payment cites,
 if any.

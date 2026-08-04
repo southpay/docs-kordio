@@ -10,7 +10,7 @@ A decision stored in our database only binds an executor that chooses to ask us,
 every time. Anything already holding the means to act can act without checking, and a control
 layer becomes a log of advice that may have been ignored.
 
-So an allowed decision also returns a **cosignature**: a compact JWS over the runtime, session,
+So an allowed decision also returns a **cosignature**: a compact JWS over the agent, budget,
 action, resource, amount and currency, expiring in minutes.
 
 ```json
@@ -34,11 +34,11 @@ The JWS is `ES256` over these claims:
 | Claim | Meaning |
 | --- | --- |
 | `iss` | Always `kordio` |
-| `sub` | The runtime that was authorized |
+| `sub` | The agent that was authorized |
 | `jti` | The intent id, so a signature maps to exactly one decision |
 | `iat`, `nbf`, `exp` | Issued, not-before, expiry. Default lifetime is five minutes |
 | `workspace_id` | The workspace the decision belongs to |
-| `session_id` | The budget envelope it was committed against |
+| `budget_id` | The budget envelope it was committed against |
 | `intent_id` | Same as `jti`, for readability |
 | `action_type` | What was authorized, for example `payment.create` |
 | `resource` | The counterparty or target, when one was given |
@@ -132,7 +132,7 @@ header instead. The endpoint is unauthenticated either way.
     "valid": true,
     "reason": null,
     "intent_id": "9b2ef0c1-6a3d-4e75-8c19-2f4b7d5a0e63",
-    "runtime_id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
+    "agent_id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
     "action_type": "payment.create",
     "resource": "acme-supplies.example",
     "amount_cents": 12000,

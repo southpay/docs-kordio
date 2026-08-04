@@ -41,10 +41,10 @@ table](/agents/policies#the-typed-columns-and-the-rule-name-each-produces).
 
 | `decision.rule` | Why |
 | --- | --- |
-| `no_policy` | The runtime has no active policy, so nothing is authorized for it yet. |
-| `session_inactive` | The session is exhausted or closed. Open a new one. |
-| `runtime_scope` | The runtime key is not scoped for this `action_type`. |
-| `session_budget` | The action does not fit the remaining session envelope. |
+| `no_policy` | The agent has no active policy, so nothing is authorized for it yet. |
+| `session_inactive` | The budget is exhausted or closed. Open a new one. |
+| `runtime_scope` | The agent key is not scoped for this `action_type`. |
+| `session_budget` | The action does not fit the remaining budget envelope. |
 | `per_transaction_cap` | Over the per-action ceiling set by `per_transaction_cap_cents`. |
 | `velocity_cap` | Over the rolling-window cap set by `velocity_cap_cents`. |
 | `monthly_cap` | Over the calendar-month cap set by `monthly_cap_cents`. |
@@ -70,7 +70,7 @@ the action. See [holding spend for a person](/agents/approvals).
 Everything that is not a decision returns:
 
 ```json
-{ "error": { "message": "Runtime is not scoped for tool.invoke", "code": null } }
+{ "error": { "message": "Agent is not scoped for tool.invoke", "code": null } }
 ```
 
 Switch on `code` where it is present. `message` is for humans and may change.
@@ -85,16 +85,16 @@ Switch on `code` where it is present. `message` is for humans and may change.
 
 ### runtime_key_required
 
-`401` - No runtime key was presented. Send `Authorization: Bearer krt_...`.
+`401` - No agent key was presented. Send `Authorization: Bearer krt_...`.
 
 ### invalid_runtime_key
 
-`401` - The key was not recognised, or its runtime is suspended or revoked.
+`401` - The key was not recognised, or its agent is suspended or revoked.
 
 ### insufficient_role
 
 `403` - Your membership does not carry the capability this call requires. Approving needs
-`approve`; writing policy and managing runtimes need `manage_policy`; members and billing need
+`approve`; writing policy and managing agents need `manage_policy`; members and billing need
 `manage_members`.
 
 ### idempotency_key_required
@@ -150,7 +150,7 @@ held; retry the execution rather than re-authorizing.
 | Status | When |
 | --- | --- |
 | `400` | A required body parameter is missing. |
-| `404` | The session, intent or workspace does not belong to you. Kordio does not confirm existence across a tenancy boundary, so this is a `404` rather than a `403`. |
+| `404` | The budget, intent or workspace does not belong to you. Kordio does not confirm existence across a tenancy boundary, so this is a `404` rather than a `403`. |
 | `422` | The request was understood but cannot be applied: a rule that would not compile, an import naming an unknown module, an intent resolved from the wrong state, a module still imported by a policy. |
 | `500` | Unexpected. Retry; if it persists, contact support. |
 

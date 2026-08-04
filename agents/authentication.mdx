@@ -1,5 +1,5 @@
 ---
-title: "Runtime keys and dashboard tokens"
+title: "Agent keys and dashboard tokens"
 sidebarTitle: "Authentication"
 description: "Two credentials, trusted differently, and how to get the first one."
 icon: "key-square"
@@ -10,12 +10,22 @@ Spend control has two callers and they authenticate differently, because they ar
 differently. An agent able to widen its own limits is not governed by them, so the separation
 is the point rather than a formality.
 
+<Note>
+  **If you integrated before this page said agent and budget.** What used to be called a
+  runtime is an agent, and what used to be called a session is a budget. Nothing you have
+  deployed needs changing: `POST /v1/agent/sessions` still opens a budget, `session_id` is
+  still accepted wherever `budget_id` is, and every response carries `runtime_id` and
+  `session_id` next to `agent_id` and `budget_id`. Policy conditions written against
+  `runtime_id` or `session_id` keep matching, and always will. Only the names in this
+  documentation moved.
+</Note>
+
 | Caller | Credential | Reaches |
 | --- | --- | --- |
-| An **agent**, asking whether it may act | Runtime API key, `krt_…` | `/v1/agent/*` |
+| An **agent**, asking whether it may act | Agent API key, `krt_…` | `/v1/agent/*` |
 | A **person or your backend**, managing the workspace | Identity bearer token | `/v1/workspaces/{slug}/*` |
 
-A runtime key can never write policy, and a dashboard token can never authorize an action as
+An agent key can never write policy, and a dashboard token can never authorize an action as
 an agent.
 
 <Info>
@@ -58,7 +68,7 @@ complete at `POST /v1/auth/verify_mfa`.
 
 <Warning>
   A dashboard token carries your full capability set in the workspace. It is not an agent
-  credential and must never be given to an agent. Agents get a runtime key, which cannot
+  credential and must never be given to an agent. Agents get an agent key, which cannot
   write policy.
 </Warning>
 
@@ -66,15 +76,15 @@ Set both for the rest of the docs:
 
 <Snippet file="env-agents.mdx" />
 
-## Runtime keys
+## Agent keys
 
-This is the credential your agent carries. Create a runtime and the key is returned exactly
+This is the credential your agent carries. Create an agent and the key is returned exactly
 once:
 
 <CodeGroup>
 
 ```bash cURL
-curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/runtimes \
+curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/agents \
   -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "procurement agent", "mode": "test", "scopes": ["payment.*"]}'
@@ -82,7 +92,7 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/runtimes \
 
 ```typescript TypeScript
 const res = await fetch(
-  `https://api.kordio.io/v1/workspaces/${process.env.KORDIO_WORKSPACE}/runtimes`,
+  `https://api.kordio.io/v1/workspaces/${process.env.KORDIO_WORKSPACE}/agents`,
   {
     method: "POST",
     headers: {
@@ -103,7 +113,7 @@ const { data } = await res.json();
 import os, requests
 
 res = requests.post(
-    f"https://api.kordio.io/v1/workspaces/{os.environ['KORDIO_WORKSPACE']}/runtimes",
+    f"https://api.kordio.io/v1/workspaces/{os.environ['KORDIO_WORKSPACE']}/agents",
     headers={"Authorization": f"Bearer {os.environ['KORDIO_DASHBOARD_TOKEN']}"},
     json={"name": "procurement agent", "mode": "test", "scopes": ["payment.*"]},
 )
@@ -129,17 +139,17 @@ data = res.json()["data"]
 ```
 
 Kordio stores only a digest and compares it in constant time. `api_key` cannot be shown again;
-if you lose it, rotate the runtime. Keys are prefixed by mode, `krt_test_…` or `krt_live_…`,
+if you lose it, rotate the agent. Keys are prefixed by mode, `krt_test_…` or `krt_live_…`,
 so a test key can never reach live data.
 
 Send it as a bearer token:
 
 ```bash
 curl -X POST https://api.kordio.io/v1/agent/actions \
-  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Authorization: Bearer $KORDIO_AGENT_KEY" \
   -H "Idempotency-Key: order-4471" \
   -H "Content-Type: application/json" \
-  -d '{"session_id": "3f1c...", "action_type": "payment.create", "cost_cents": 12000}'
+  -d '{"budget_id": "3f1c...", "action_type": "payment.create", "cost_cents": 12000}'
 ```
 
 ### Scopes
@@ -152,15 +162,15 @@ A request outside the key's scopes is refused by an intrinsic rule before any po
 the decision names `runtime_scope` as what refused it.
 
 <Warning>
-  Scope narrowly and use one runtime per agent workload. Runtimes are unlimited on every paid
+  Scope narrowly and use one agent per agent workload. Agents are unlimited on every paid
   plan, so a shared key buys you nothing and costs you the ability to revoke one agent without
   stopping the rest.
 </Warning>
 
 ### Rotating and revoking
 
-A runtime is `active`, `suspended`, or `revoked`, changed with `PATCH
-/v1/workspaces/{slug}/runtimes/{id}`. Suspending stops new authorizations and leaves history
+An agent is `active`, `suspended`, or `revoked`, changed with `PATCH
+/v1/workspaces/{slug}/agents/{id}`. Suspending stops new authorizations and leaves history
 intact; revoking is permanent.
 
 Neither rewrites decisions already made, and neither invalidates a cosignature already issued,
@@ -169,7 +179,7 @@ small, but it is not zero. See [what Kordio guarantees](/agents/guarantees#revoc
 
 ## Dashboard tokens and capabilities
 
-Everything under `/v1/workspaces/{slug}/*` uses the identity token: creating runtimes, writing
+Everything under `/v1/workspaces/{slug}/*` uses the identity token: creating agents, writing
 policy, reading intents, resolving approvals, managing billing.
 
 ```bash
@@ -187,9 +197,9 @@ Capabilities come from your role in that workspace, and the API enforces them:
 
 | Capability | Lets you |
 | --- | --- |
-| `read` | See runtimes, policies, sessions, intents, funds, the audit trail |
+| `read` | See agents, policies, budgets, intents, funds, the audit trail |
 | `approve` | Resolve a held action |
-| `manage_policy` | Write policy, create and rotate runtimes, manage webhook endpoints |
+| `manage_policy` | Write policy, create and rotate agents, manage webhook endpoints |
 | `manage_members` | Invite and remove people, change roles, manage billing, delete the workspace |
 
 `approve` and `manage_policy` are deliberately separate. The person who authorises a payment
@@ -203,16 +213,16 @@ looking for.
 
 ## Test and live
 
-Every credential is bound to one mode and the two never mix. A test runtime key cannot touch
-live data, and a live runtime cannot be created on a plan without live mode.
+Every credential is bound to one mode and the two never mix. A test agent key cannot touch
+live data, and a live agent cannot be created on a plan without live mode.
 
 Test mode runs the same policy engine, returns the same shapes, and issues real cosignatures.
 That is deliberate: you can prove an entire integration, including signature verification
 inside your own executor, before any money is at stake.
 
 <Note>
-  Control-plane responses carry no `livemode` field. The mode is a property of the runtime, so
-  read it from `GET /v1/workspaces/{slug}/runtimes/{id}`, or from `runtime_mode` inside a
+  Control-plane responses carry no `livemode` field. The mode is a property of the agent, so
+  read it from `GET /v1/workspaces/{slug}/agents/{id}`, or from `runtime_mode` inside a
   decision. The ledger API does echo `livemode` on every response; the two APIs differ here.
 </Note>
 
@@ -222,10 +232,10 @@ inside your own executor, before any money is at stake.
 | --- | --- |
 | `401` | Missing (`runtime_key_required`) or unrecognised (`invalid_runtime_key`) credential. |
 | `403` | Recognised but not permitted: a capability you lack (`insufficient_role`), or a decision that was denied. |
-| `404` | The resource exists but not in a workspace or runtime you can reach. Kordio does not confirm existence across a tenancy boundary. |
+| `404` | The resource exists but not in a workspace or agent you can reach. Kordio does not confirm existence across a tenancy boundary. |
 
 <Note>
-  A `404` where you expected a `403` is usually a workspace or runtime mismatch, not a missing
+  A `404` where you expected a `403` is usually a workspace or agent mismatch, not a missing
   record.
 </Note>
 

@@ -27,20 +27,20 @@ credentials](/agents/authentication#getting-your-credentials).
 
 <Snippet file="env-agents.mdx" />
 
-## 1. Create a runtime
+## 1. Create an agent
 
-A **runtime** is a scoped identity for one agent workload. It carries its own API key and its
+An **agent** is a scoped identity for one workload. It carries its own API key and its
 own permitted action types.
 
 ```bash
-RUNTIME=$(curl -s -X POST \
-  https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/runtimes \
+AGENT=$(curl -s -X POST \
+  https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/agents \
   -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"procurement agent","mode":"test","scopes":["payment.*","tool.invoke"]}')
 
-export KORDIO_RUNTIME_ID=$(echo "$RUNTIME" | jq -r '.data.id')
-export KORDIO_RUNTIME_KEY=$(echo "$RUNTIME" | jq -r '.data.api_key')
+export KORDIO_AGENT_ID=$(echo "$AGENT" | jq -r '.data.id')
+export KORDIO_AGENT_KEY=$(echo "$AGENT" | jq -r '.data.api_key')
 ```
 
 `api_key` is returned exactly once and starts with `krt_test_`. Store it the way you store any
@@ -48,13 +48,13 @@ other secret; Kordio keeps only a digest and cannot show it to you again.
 
 <Warning>
   `scopes` restricts which action types this key may even ask about. An empty array means
-  unrestricted. Prefer one runtime per agent workload with the narrowest scopes that work.
+  unrestricted. Prefer one agent per agent workload with the narrowest scopes that work.
 </Warning>
 
 ## 2. Write a policy
 
-**Do not skip this step.** A runtime with no active policy denies everything, with the rule
-`no_policy`. That is deliberate and fail-closed: a runtime nobody has written rules for has no
+**Do not skip this step.** An agent with no active policy denies everything, with the rule
+`no_policy`. That is deliberate and fail-closed: an agent nobody has written rules for has no
 authority, rather than unlimited authority.
 
 ```bash
@@ -62,7 +62,7 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policies \
   -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-    \"runtime_id\": \"$KORDIO_RUNTIME_ID\",
+    \"agent_id\": \"$KORDIO_AGENT_ID\",
     \"per_transaction_cap_cents\": 50000,
     \"approval_threshold_cents\": 200000,
     \"velocity_cap_cents\": 200000,
@@ -76,43 +76,43 @@ and never more than $2,000 in any rolling hour.
 The third rule is the one that catches a retry loop. The first two, on their own, would let
 nineteen individually reasonable $340 charges through.
 
-## 3. Open a session
+## 3. Open a budget
 
-A **session** is a budget envelope for one run. Spend is committed against it, and it is the
+A **budget** is a budget envelope for one run. Spend is committed against it, and it is the
 unit that stops a loop rather than a single mistake.
 
 <CodeGroup>
 
 ```bash cURL
-SESSION=$(curl -s -X POST https://api.kordio.io/v1/agent/sessions \
-  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+BUDGET=$(curl -s -X POST https://api.kordio.io/v1/agent/budgets \
+  -H "Authorization: Bearer $KORDIO_AGENT_KEY" \
   -H "Content-Type: application/json" \
   -d '{"budget_cents": 50000, "currency": "USD"}')
 
-export KORDIO_SESSION_ID=$(echo "$SESSION" | jq -r '.data.id')
+export KORDIO_BUDGET_ID=$(echo "$BUDGET" | jq -r '.data.id')
 ```
 
 ```typescript TypeScript
-const res = await fetch("https://api.kordio.io/v1/agent/sessions", {
+const res = await fetch("https://api.kordio.io/v1/agent/budgets", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${process.env.KORDIO_RUNTIME_KEY}`,
+    Authorization: `Bearer ${process.env.KORDIO_AGENT_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({ budget_cents: 50_000, currency: "USD" }),
 });
-const { data: session } = await res.json();
+const { data: budget } = await res.json();
 ```
 
 ```python Python
 import os, requests
 
 res = requests.post(
-    "https://api.kordio.io/v1/agent/sessions",
-    headers={"Authorization": f"Bearer {os.environ['KORDIO_RUNTIME_KEY']}"},
+    "https://api.kordio.io/v1/agent/budgets",
+    headers={"Authorization": f"Bearer {os.environ['KORDIO_AGENT_KEY']}"},
     json={"budget_cents": 50_000, "currency": "USD"},
 )
-session = res.json()["data"]
+budget = res.json()["data"]
 ```
 
 </CodeGroup>
@@ -121,8 +121,8 @@ session = res.json()["data"]
 {
   "data": {
     "id": "3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83",
-    "runtime_id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
-    "parent_session_id": null,
+    "agent_id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
+    "parent_budget_id": null,
     "budget_cents": 50000,
     "spent_cents": 0,
     "remaining_cents": 50000,
@@ -141,11 +141,11 @@ This is the call that matters. Put it in front of the action, not after it.
 
 ```bash cURL
 ACTION=$(curl -s -w '\n%{http_code}' -X POST https://api.kordio.io/v1/agent/actions \
-  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Authorization: Bearer $KORDIO_AGENT_KEY" \
   -H "Idempotency-Key: order-4471-attempt-1" \
   -H "Content-Type: application/json" \
   -d "{
-    \"session_id\": \"$KORDIO_SESSION_ID\",
+    \"budget_id\": \"$KORDIO_BUDGET_ID\",
     \"action_type\": \"payment.create\",
     \"resource\": \"acme-supplies.example\",
     \"cost_cents\": 12000
@@ -159,12 +159,12 @@ echo "$ACTION" | tail -n1   # the status code you branch on
 const res = await fetch("https://api.kordio.io/v1/agent/actions", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${process.env.KORDIO_RUNTIME_KEY}`,
+    Authorization: `Bearer ${process.env.KORDIO_AGENT_KEY}`,
     "Idempotency-Key": "order-4471-attempt-1",
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    session_id: session.id,
+    budget_id: budget.id,
     action_type: "payment.create",
     resource: "acme-supplies.example",
     cost_cents: 12_000,
@@ -183,11 +183,11 @@ switch (res.status) {
 res = requests.post(
     "https://api.kordio.io/v1/agent/actions",
     headers={
-        "Authorization": f"Bearer {os.environ['KORDIO_RUNTIME_KEY']}",
+        "Authorization": f"Bearer {os.environ['KORDIO_AGENT_KEY']}",
         "Idempotency-Key": "order-4471-attempt-1",
     },
     json={
-        "session_id": session["id"],
+        "budget_id": budget["id"],
         "action_type": "payment.create",
         "resource": "acme-supplies.example",
         "cost_cents": 12_000,
@@ -203,7 +203,7 @@ body = res.json()
 {
   "data": {
     "id": "9b2ef0c1-6a3d-4e75-8c19-2f4b7d5a0e63",
-    "session_id": "3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83",
+    "budget_id": "3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83",
     "action_type": "payment.create",
     "resource": "acme-supplies.example",
     "cost_cents": 12000,
@@ -246,7 +246,7 @@ Kordio holds the budget reservation until you say how the action ended.
 ```bash
 curl -X POST \
   https://api.kordio.io/v1/agent/actions/$KORDIO_ACTION_ID/complete \
-  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY"
+  -H "Authorization: Bearer $KORDIO_AGENT_KEY"
 ```
 
 If it failed, say so instead. The reservation is released and the budget goes back:
@@ -254,13 +254,13 @@ If it failed, say so instead. The reservation is released and the budget goes ba
 ```bash
 curl -X POST \
   https://api.kordio.io/v1/agent/actions/$KORDIO_ACTION_ID/fail \
-  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Authorization: Bearer $KORDIO_AGENT_KEY" \
   -H "Content-Type: application/json" \
   -d '{"reason": "vendor returned 502"}'
 ```
 
 Skipping this step is the most common integration mistake. An action that is never completed
-or failed holds its budget until the session closes.
+or failed holds its budget until the budget closes.
 
 <Note>
   Payments are the exception. `POST /v1/agent/payment_intents` executes in the same request, so
@@ -275,10 +275,10 @@ tests, and in your own UI to show someone what a policy would do before they sav
 
 ```bash
 curl -X POST https://api.kordio.io/v1/agent/actions/simulate \
-  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Authorization: Bearer $KORDIO_AGENT_KEY" \
   -H "Content-Type: application/json" \
   -d "{
-    \"session_id\": \"$KORDIO_SESSION_ID\",
+    \"budget_id\": \"$KORDIO_BUDGET_ID\",
     \"action_type\": \"payment.create\",
     \"cost_cents\": 999999
   }"
