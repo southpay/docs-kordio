@@ -1,7 +1,9 @@
 ---
-title: "Core concepts"
+title: "Ledger concepts"
+sidebarTitle: "Concepts"
+description: "Double-entry, corrections, idempotency, multi-currency, value dates."
 icon: "layers"
-description: "Double-entry, append-only corrections, idempotency, multi-currency, and value-date semantics."
+keywords: ["debit", "credit", "Idempotency-Key", "value_date", "dry_run"]
 ---
 
 The Kordio API rests on a small set of guarantees. Understand these five and you understand the platform.
@@ -47,7 +49,7 @@ Every write accepts an `Idempotency-Key` header. The key, scoped to your ledger,
 
 ```bash
 curl -X POST https://api.kordio.io/v1/transactions \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: invoice_001" \
   -d '{"postings":[ ... ]}'
@@ -73,7 +75,7 @@ Read a historical balance by passing `?at=<ISO 8601 timestamp>` on the balance e
 
 ```bash
 curl "https://api.kordio.io/v1/accounts/cash:usd/balance?at=2026-04-15T00:00:00Z" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $KORDIO_TOKEN"
 ```
 
 This computes the balance as of that instant from each posting's `value_date`. Account statements work the same way: `GET /v1/accounts/{id}/statement?from=...&to=...` returns the opening balance, every posting in the window ordered by `value_date`, and the closing balance.
@@ -81,16 +83,16 @@ This computes the balance as of that instant from each posting's `value_date`. A
 ## Where to go next
 
 <CardGroup cols={2}>
-  <Card title="Pagination and expand" icon="list" href="/pagination">
+  <Card title="Pagination and expand" icon="list" href="/ledger/pagination">
     Cursor pagination and inlining related objects.
   </Card>
-  <Card title="Webhooks" icon="webhook" href="/webhooks">
+  <Card title="Webhooks" icon="webhook" href="/ledger/webhooks">
     Event delivery, signatures, and replay.
   </Card>
-  <Card title="Errors" icon="triangle-exclamation" href="/errors">
+  <Card title="Errors" icon="triangle-alert" href="/ledger/errors">
     Every error code, with hints.
   </Card>
-  <Card title="API reference" icon="code" href="/api-reference/introduction">
+  <Card title="API reference" icon="code" href="/ledger/api-reference/introduction">
     Every endpoint, generated from the spec.
   </Card>
 </CardGroup>

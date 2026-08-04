@@ -1,0 +1,95 @@
+---
+title: "Why a ledger API"
+sidebarTitle: "Why Kordio"
+description: "Versus Postgres, a processor, accounting software, and other ledger APIs."
+icon: "circle-help"
+keywords: ["double-entry", "system of record", "Fragment", "Postgres"]
+---
+
+A ledger is the one component you can build yourself and regret for years. Here is the case
+for not, and the honest boundaries of it.
+
+## You start on Postgres
+
+Almost everyone does, and it works until it doesn't. The first retried request that
+double-posts, the first balance that is off by a cent, the first reconciliation that will not
+tie out: each one sends you back to rebuild an invariant you did not know you needed yet.
+Balanced-per-currency enforcement, append-only history, idempotency, atomic multi-posting
+writes, derived balances that stay fast, multi-currency, point-in-time history, reconciliation.
+You end up building the ledger anyway, one incident at a time, in production, with real money
+on it.
+
+Kordio is that correctness layer, already built and enforced. The full argument, including
+where Postgres genuinely is the right tool (we run on it), is on [why not just use
+Postgres?](/ledger/why-not-postgres).
+
+## A processor moves the money, not the meaning
+
+A payment processor like Stripe authorizes, captures, and settles payments across the card
+networks and bank rails. It is very good at moving money. It never becomes your system of
+record for what that money meant.
+
+The processor tells you a charge succeeded. It does not tell you which accounts that charge
+affected, in what currency, or what your balances are as a result. That is the ledger's job,
+and you still need it. A common setup is to take payments through a processor and write the
+corresponding transactions into Kordio as the record of truth.
+
+<Info>
+  Kordio is not a payment processor. It does not touch card or bank rails. It records and
+  proves the accounting behind whatever moved the money.
+</Info>
+
+## Accounting software answers your finance team, not your product
+
+Accounting software like QuickBooks or Xero maintains your company's books, produces statements
+for tax and compliance, and is operated by humans through a UI on a periodic close cycle. It
+answers your finance team.
+
+Your product asks different questions, at a different speed. It needs a programmable system of
+record it writes to in real time over an API, as transactions happen, at the granularity of
+your application's own accounts. That is a developer ledger. Many companies run both, with the
+ledger feeding summarized figures into their accounting system.
+
+## Versus other developer ledger APIs
+
+Fragment.dev and similar developer ledger APIs sit in the same category as Kordio, so here the
+question is not category but where each one draws its lines. Compare on the axes that change
+how your system behaves under real money, not on surface ergonomics.
+
+- **Where correctness is enforced.** Kordio enforces the invariants in the database itself,
+  with deferred Postgres triggers that reject an unbalanced or mutated write at `COMMIT`, not
+  only in an application layer a future code path can route around. The guarantees are
+  published on the [invariants](/ledger/invariants) page so you can hold the platform to them
+  rather than infer them.
+- **Opinionated or unopinionated semantics.** Kordio ships primitives, not a vertical. It bakes
+  in no domain vocabulary: you define the accounting graph with account templates, and the
+  platform guarantees the invariants, never the business meaning. A ledger that models your
+  domain for you is faster on day one and a wall on day one hundred, when your model and its
+  model disagree.
+- **Reconciliation as a primitive, not a report.** Reconciliation here is a first-class
+  operation: replayable runs that match an external snapshot against postings and mark what
+  tied out. For most teams reconciliation is the actual job, so whether it is a primitive or a
+  spreadsheet you rebuild each month is a real axis.
+- **Event and state model.** Every write emits a durable, replayable event, and balances are
+  derived rather than stored, so consumers can rebuild their view from the log and you can
+  always reconstruct state exactly. A ledger whose balances are stored is a ledger that can
+  disagree with itself.
+- **Multi-currency depth.** No code path assumes a single currency, and a cross-currency
+  transaction records an FX snapshot at write time, so a restatement years later reproduces the
+  original rate instead of guessing.
+
+**Pick Kordio if** you want correctness guaranteed at the database layer, a ledger that stays
+out of your domain model, and reconciliation plus a replayable event log as primitives rather
+than homework. **Look elsewhere if** you want a turnkey product that models a specific vertical
+for you and you are willing to inherit its assumptions to move faster on day one.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Post your first transaction" icon="play" href="/ledger/quickstart">
+    From credentials to a posted transaction.
+  </Card>
+  <Card title="Invariants" icon="lock" href="/ledger/invariants">
+    The guarantees, and the bug class each one makes impossible.
+  </Card>
+</CardGroup>

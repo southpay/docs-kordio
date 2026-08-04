@@ -1,7 +1,9 @@
 ---
 title: "Pagination and expand"
+sidebarTitle: "Pagination"
+description: "Walk lists with cursors and inline related objects."
 icon: "list"
-description: "Walk list endpoints with cursors and inline related objects with expand."
+keywords: ["cursor", "next_cursor", "has_more", "expand"]
 ---
 
 ## List envelope
@@ -29,11 +31,11 @@ Lists paginate with opaque cursors. Request a page, and if `has_more` is `true`,
 ```bash
 # First page
 curl "https://api.kordio.io/v1/transactions?limit=50" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $KORDIO_TOKEN"
 
 # Next page
 curl "https://api.kordio.io/v1/transactions?limit=50&cursor=<next_cursor>" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $KORDIO_TOKEN"
 ```
 
 The `limit` parameter defaults to `50`, with a minimum of `1` and a maximum of `200`.
@@ -48,7 +50,7 @@ A typical loop:
 cursor=""
 while :; do
   page=$(curl -s "https://api.kordio.io/v1/transactions?limit=200&cursor=$cursor" \
-    -H "Authorization: Bearer $TOKEN")
+    -H "Authorization: Bearer $KORDIO_TOKEN")
   # process page.data
   has_more=$(echo "$page" | jq -r '.has_more')
   [ "$has_more" = "true" ] || break
@@ -62,10 +64,10 @@ List endpoints accept filters in the query string. The available filters depend 
 
 ```bash
 curl "https://api.kordio.io/v1/transactions?metadata[invoice]=inv_8721" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $KORDIO_TOKEN"
 ```
 
-Accounts can be filtered by `type`, `currency`, and other fields; events by `type` and time window. See each endpoint in the [API reference](/api-reference/introduction) for its filter set.
+Accounts can be filtered by `type`, `currency`, and other fields; events by `type` and time window. See each endpoint in the [API reference](/ledger/api-reference/introduction) for its filter set.
 
 ## Expanding related objects
 
@@ -80,7 +82,24 @@ By default, a transaction's postings reference their account by `id`. Use `?expa
 
 ```bash
 curl "https://api.kordio.io/v1/transactions/3061ec4e-c959-49ba-a0f6-99186a7bd5d8?expand=postings.account,balances" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $KORDIO_TOKEN"
 ```
 
 Expansion works on both single-resource reads and list endpoints, and is also accepted when creating a transaction so the create response can carry the inlined accounts and resulting balances.
+
+<Note>
+  Spend control paginates differently: `starting_after` takes a record id rather than an opaque
+  cursor, and its `has_more` can be `true` on a final full page. See the [spend control API
+  reference](/agents/api-reference/introduction#pagination).
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/ledger/webhooks">
+    Walking the events tail after an outage.
+  </Card>
+  <Card title="API reference" icon="code" href="/ledger/api-reference/introduction">
+    The filter set on each list endpoint.
+  </Card>
+</CardGroup>

@@ -1,0 +1,172 @@
+---
+title: "Errors"
+sidebarTitle: "Errors"
+description: "Every code spend control returns, and every rule that can refuse."
+icon: "triangle-alert"
+keywords: ["idempotency_key_required", "insufficient_role", "no_policy", "live_provider_unavailable"]
+---
+
+Spend control has two kinds of failure and they are not the same thing. A **refusal** is a
+policy answer with a full decision in the body. An **error** is a request that could not be
+evaluated at all.
+
+## A denial is not an error
+
+A denied decision answers `403` and carries the whole decision, not just a code:
+
+```json 403 Forbidden
+{
+  "data": { "id": "9b2ef0c1-...", "state": "denied" },
+  "decision": {
+    "outcome": "denied",
+    "rule": "per_transaction_cap",
+    "detail": { "max_cents": 50000, "requested_cents": 120000 },
+    "headroom": { "session_remaining_cents": 380000 },
+    "policy_snapshot": []
+  }
+}
+```
+
+<Warning>
+  A `403` from the agent API is a policy answer, not a transport failure. Do not retry it with a
+  fresh idempotency key: that asks the same question again and, for a held action, asks a person
+  twice. Change the action or change the policy.
+</Warning>
+
+### Rules that can refuse
+
+`decision.rule` names what decided. Rules created through the typed policy columns report under
+the column's name, not the underlying kind — see [the mapping
+table](/agents/policies#the-typed-columns-and-the-rule-name-each-produces).
+
+| `decision.rule` | Why |
+| --- | --- |
+| `no_policy` | The runtime has no active policy, so nothing is authorized for it yet. |
+| `session_inactive` | The session is exhausted or closed. Open a new one. |
+| `runtime_scope` | The runtime key is not scoped for this `action_type`. |
+| `session_budget` | The action does not fit the remaining session envelope. |
+| `per_transaction_cap` | Over the per-action ceiling set by `per_transaction_cap_cents`. |
+| `velocity_cap` | Over the rolling-window cap set by `velocity_cap_cents`. |
+| `monthly_cap` | Over the calendar-month cap set by `monthly_cap_cents`. |
+| `counterparty_allowlist` | The counterparty is not on `counterparty_allowlist`. |
+| `cost_cap` | Over a `cost_cap` rule written in the `rules` array. |
+| `spend_window` | Over a `spend_window` rule written in the `rules` array. |
+| `monthly_spend_cap` | Over a `monthly_spend_cap` rule written in the `rules` array. |
+| `rate_limit` | Too many actions in the window, regardless of amount. |
+| `action_allowlist` | This action type is not permitted. |
+| `resource_allowlist` | This resource is not permitted. |
+| `not_allowlisted` | An allowlist-mode policy matched no `allow` rule. |
+| `spend_token_unusable` | The token is not `issued`, or has expired. |
+| `spend_token_ceiling` | The amount exceeds the token's ceiling. |
+| `spend_token_counterparty` | The token is pinned to a different counterparty. |
+
+A rule written with a custom `rule_name` reports under that name instead.
+
+An `approval_threshold` never appears as a denial. It does not refuse; it answers `202` and holds
+the action. See [holding spend for a person](/agents/approvals).
+
+## Error envelope
+
+Everything that is not a decision returns:
+
+```json
+{ "error": { "message": "Runtime is not scoped for tool.invoke", "code": null } }
+```
+
+Switch on `code` where it is present. `message` is for humans and may change.
+
+<Note>
+  `code` is `null` for most validation failures — only the codes below ever set it. Write your
+  handler to branch on the HTTP status first and treat `code` as a refinement, not as the
+  primary signal.
+</Note>
+
+## Codes
+
+### runtime_key_required
+
+`401` — No runtime key was presented. Send `Authorization: Bearer krt_...`.
+
+### invalid_runtime_key
+
+`401` — The key was not recognised, or its runtime is suspended or revoked.
+
+### insufficient_role
+
+`403` — Your membership does not carry the capability this call requires. Approving needs
+`approve`; writing policy and managing runtimes need `manage_policy`; members and billing need
+`manage_members`.
+
+### idempotency_key_required
+
+`422` — `POST /v1/agent/actions` requires an `Idempotency-Key` **header**. Note the status: this
+is a `422`, not a `400`.
+
+<Warning>
+  `POST /v1/agent/payment_intents` does **not** use that header. It requires an
+  `idempotency_key` field in the body, and its absence is a `400`. The two authorize endpoints
+  are asymmetric here.
+</Warning>
+
+### authorization_required
+
+`400` — `POST /v1/cosign/verify` was called with no token, in neither the `authorization` body
+field nor an `Authorization` header.
+
+### rate_limited
+
+`429` — Back off per the `Retry-After` header. Agent endpoints allow 1200 requests per minute
+per key; workspace endpoints allow 300.
+
+### live_provider_unavailable
+
+`503` — A live payment provider could not be reached. The decision stands and the reservation is
+held; retry the execution rather than re-authorizing.
+
+### identity_unavailable
+
+`503` — The identity provider could not be reached during sign-in.
+
+### identity_not_configured
+
+`503` — This deployment has no identity provider configured.
+
+### mfa_required
+
+`401` — Sign-in needs a second factor. The response carries `pending_authentication_token` and
+`authentication_challenge_id` alongside `error`; complete at `POST /v1/auth/verify_mfa`.
+
+### email_verification_required
+
+`401` — The account exists but its email is unverified. The response carries
+`pending_authentication_token`; complete at `POST /v1/auth/verify_email`.
+
+### invalid_signature
+
+`401` — An inbound billing webhook failed HMAC verification.
+
+## Statuses without a code
+
+| Status | When |
+| --- | --- |
+| `400` | A required body parameter is missing. |
+| `404` | The session, intent or workspace does not belong to you. Kordio does not confirm existence across a tenancy boundary, so this is a `404` rather than a `403`. |
+| `422` | The request was understood but cannot be applied: a rule that would not compile, an import naming an unknown module, an intent resolved from the wrong state, a module still imported by a policy. |
+| `500` | Unexpected. Retry; if it persists, contact support. |
+
+<Note>
+  **Known inconsistency.** Identity-token authentication failures return a bare string rather
+  than the object above: `{"error": "Missing token"}`. A client that reads `error.code`
+  unconditionally will throw on those responses. Guard for it until this is unified.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="How a decision is reached" icon="shield" href="/agents/concepts">
+    Why the first denial wins, and what fails closed.
+  </Card>
+  <Card title="Writing a policy" icon="scale" href="/agents/policies">
+    The rules behind every name in the table above.
+  </Card>
+</CardGroup>

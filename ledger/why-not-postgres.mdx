@@ -1,7 +1,9 @@
 ---
 title: "Why not just use Postgres?"
+sidebarTitle: "Why not Postgres"
+description: "Why a correct ledger is not a schema problem."
 icon: "database"
-description: "Why a correct ledger is a distributed correctness problem, not a schema problem, and where rolling your own on Postgres silently corrupts money."
+keywords: ["Postgres", "triggers", "correctness", "double-entry"]
 ---
 
 This is a fair question, and the honest answer starts by agreeing. Postgres is an excellent foundation for a ledger. Kordio runs on Postgres. So this page is not "avoid Postgres". It is about what you are actually signing up to build when you decide to roll your own ledger on top of it, and why that is more than it looks.
@@ -69,19 +71,19 @@ Every hour spent building and maintaining that system is an hour not spent on yo
 
 ## Where Kordio fits
 
-Kordio is that correctness system, offered as an API. The [invariants](/invariants) are enforced for you in application code and in Postgres triggers, idempotency holds across the network boundary, writes are serialized per account, balances are derived, and multi-currency, point-in-time history, and reconciliation are built in. You write the business logic, and the ledger cannot enter an impossible state.
+Kordio is that correctness system, offered as an API. The [invariants](/ledger/invariants) are enforced for you in application code and in Postgres triggers, idempotency holds across the network boundary, writes are serialized per account, balances are derived, and multi-currency, point-in-time history, and reconciliation are built in. You write the business logic, and the ledger cannot enter an impossible state.
 
 <CardGroup cols={2}>
-  <Card title="Invariants" icon="shield-check" href="/invariants">
+  <Card title="Invariants" icon="shield-check" href="/ledger/invariants">
     The states the ledger makes impossible.
   </Card>
   <Card title="Where Kordio fits" icon="map" href="/positioning">
     The category and where you arrive at the need.
   </Card>
-  <Card title="Reconciliation" icon="scale-balanced" href="/reconciliation">
+  <Card title="Reconciliation" icon="git-compare" href="/ledger/reconciliation">
     Where silent corruption would otherwise surface.
   </Card>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
+  <Card title="Quickstart" icon="rocket" href="/ledger/quickstart">
     From credentials to a posted transaction in four calls.
   </Card>
 </CardGroup>

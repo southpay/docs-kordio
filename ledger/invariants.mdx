@@ -1,7 +1,9 @@
 ---
 title: "Invariants"
-icon: "shield-check"
-description: "The double-entry ledger invariants Kordio enforces in application code and in Postgres, and the class of money corruption each one makes impossible."
+sidebarTitle: "Invariants"
+description: "What the ledger makes impossible, and the bug class each rule removes."
+icon: "lock"
+keywords: ["append-only", "derived balances", "atomicity", "replay"]
 ---
 
 Most systems store state and hope it stays correct. A ledger inverts that. It is built so that incorrect states cannot be represented in the first place. Each invariant on this page is not a guideline we try to honor. It is a constraint that makes a specific kind of money corruption impossible, so that when the invariant holds, the meaning of every balance stays unambiguous.
@@ -38,9 +40,9 @@ Every amount is stored as an exact integer in the currency's smallest unit (cent
 
 **What breaks if it fails:** floating point reintroduces sub-cent drift that accumulates and never reconciles, and a mutable currency would silently reinterpret every historical posting on the account, changing what past entries mean after the fact.
 
-<Warning>
-  The same exactness applies on the wire. Every monetary field (amounts, balances, report totals) is serialized as a JSON **string** of integer minor units (`"9700000"`, matching `^-?\d+$`), because an 18-decimal token amount can exceed `2^53` where a JSON `number` would lose precision. Parse money with a big-integer or decimal type, never a JS `number`. See [Core concepts](/concepts#integer-minor-units).
-</Warning>
+The same exactness applies on the wire: every monetary field is serialized as a JSON string of
+integer minor units — [parse them with a big-integer
+type](/ledger/concepts#integer-minor-units).
 
 ## Financial invariants: conservation of value
 
@@ -125,16 +127,16 @@ Historical balances and statements are computed from each posting's `value_date`
 Taken together, these are not features you switch on. They are constraints that remove whole categories of failure from the space of things that can happen: no torn writes, no duplicated charges, no drifting balances, no editable history, no value created from nothing, no number you cannot reconstruct. You get to reason about your integration in terms of what the ledger makes impossible, which is a much stronger position than trusting that it usually does the right thing.
 
 <CardGroup cols={2}>
-  <Card title="Why not just use Postgres?" icon="database" href="/why-not-postgres">
+  <Card title="Why not just use Postgres?" icon="database" href="/ledger/why-not-postgres">
     What you would have to build to enforce these invariants yourself.
   </Card>
-  <Card title="Money flows" icon="arrow-right-arrow-left" href="/money-flows">
+  <Card title="Money flows" icon="arrow-right-left" href="/ledger/money-flows">
     How value moves through accounts as balanced postings.
   </Card>
-  <Card title="Reconciliation" icon="scale-balanced" href="/reconciliation">
+  <Card title="Reconciliation" icon="git-compare" href="/ledger/reconciliation">
     The replay and audit invariants put to work.
   </Card>
-  <Card title="Core concepts" icon="book" href="/concepts">
+  <Card title="Core concepts" icon="book" href="/ledger/concepts">
     Double-entry, corrections, idempotency, multi-currency, value dates.
   </Card>
 </CardGroup>

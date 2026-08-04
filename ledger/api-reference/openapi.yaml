@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Kordio API
+  title: Kordio Ledger API
   version: "v1"
   summary: Double-entry ledger as a service.
   description: |
@@ -8,41 +8,13 @@ info:
     per currency, is idempotent by client key, and is append-only.
     Corrections are reversal transactions, not edits.
 
-    ## Quickstart
+    This is one of two APIs on `api.kordio.io`. The other is the
+    [spend control API](https://docs.kordio.io/agents/api-reference/introduction),
+    which governs what AI agents may spend. They share a host and nothing else:
+    different credentials, different envelopes, different pagination.
 
-    ```bash
-    # 1. Get an access token (client_credentials)
-    curl -X POST https://api.kordio.io/oauth/token \
-      -u "$CLIENT_ID:$CLIENT_SECRET" \
-      -d 'grant_type=client_credentials&scope=ledger:read ledger:write'
-
-    # 2. Create two accounts (token from step 1)
-    curl -X POST https://api.kordio.io/v1/accounts \
-      -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-      -d '{"id":"cash:usd","name":"Cash","type":"asset","currency":"USD"}'
-    curl -X POST https://api.kordio.io/v1/accounts \
-      -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-      -d '{"id":"revenue:subscriptions","name":"Subscriptions","type":"revenue","currency":"USD"}'
-
-    # 3. Post a balanced transaction
-    curl -X POST https://api.kordio.io/v1/transactions \
-      -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-      -H "Idempotency-Key: invoice_001" \
-      -d '{"postings":[
-            {"account":"cash:usd","amount":"1000","currency":"USD","direction":"debit"},
-            {"account":"revenue:subscriptions","amount":"1000","currency":"USD","direction":"credit"}
-          ]}'
-    ```
-
-    ### Quick mental model
-
-    * **Account**: named bucket of value in one currency. `id` and
-      `currency` are caller-chosen and immutable.
-    * **Posting**: one line of a transaction. Says: this account moved
-      by this amount in this direction.
-    * **Transaction**: a set of postings that move together. The ledger
-      enforces `sum(debits) = sum(credits)` per currency. That's the
-      whole correctness model.
+    New here? Start with the
+    [ledger quickstart](https://docs.kordio.io/ledger/quickstart).
 
     ### Response envelope
 
@@ -160,7 +132,7 @@ tags:
   - name: Reserves
     description: |
       Sweep / release / claw funds held against a counterparty.
-      Reserves are accounts with `account_kind = "reserve"` and a
+      Reserves are accounts with `account_kind = "restricted"` and a
       `counterparty_ref`; listing and balance reads use the standard
       `/v1/accounts` surface. New event types `reserve.swept`,
       `reserve.released`, `reserve.clawed`.
@@ -512,10 +484,10 @@ components:
               example: "0"
             account_kind:
               type: string
-              enum: [standard, reserve]
+              enum: [standard, restricted]
               default: standard
               description: |
-                `reserve` is set by the platform on accounts created via
+                `restricted` is set by the platform on accounts created via
                 `POST /v1/reserves`. Customers can also pass it explicitly
                 to model reserves they build by hand.
             counterparty_ref:

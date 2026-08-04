@@ -1,0 +1,241 @@
+---
+title: "Runtime keys and dashboard tokens"
+sidebarTitle: "Authentication"
+description: "Two credentials, trusted differently, and how to get the first one."
+icon: "key-square"
+keywords: ["krt_", "scopes", "capabilities", "manage_policy", "approve"]
+---
+
+Spend control has two callers and they authenticate differently, because they are trusted
+differently. An agent able to widen its own limits is not governed by them, so the separation
+is the point rather than a formality.
+
+| Caller | Credential | Reaches |
+| --- | --- | --- |
+| An **agent**, asking whether it may act | Runtime API key, `krt_…` | `/v1/agent/*` |
+| A **person or your backend**, managing the workspace | Identity bearer token | `/v1/workspaces/{slug}/*` |
+
+A runtime key can never write policy, and a dashboard token can never authorize an action as
+an agent.
+
+<Info>
+  Integrating the ledger instead? It uses OAuth 2.0 client credentials, documented on
+  [Ledger: OAuth client credentials](/ledger/authentication). Nothing on this page applies
+  there.
+</Info>
+
+## Getting your credentials
+
+Everything below needs a workspace and a dashboard token, so start here.
+
+1. Sign up at [app.kordio.io](https://app.kordio.io) and create a workspace. You become its
+   `owner`, which carries every capability.
+2. Your **workspace slug** is the one in the console URL: `app.kordio.io/{slug}`. It is the
+   `{workspace_slug}` path segment in every management call.
+3. Your **dashboard token** is the identity token the console holds after sign-in. For
+   scripting, mint one directly:
+
+```bash
+curl -X POST https://api.kordio.io/v1/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{"email": "you@example.com", "password": "..."}'
+```
+
+```json 200 OK
+{
+  "data": {
+    "access_token": "eyJhbGciOi...",
+    "refresh_token": "...",
+    "user": { "id": "...", "email": "you@example.com" }
+  }
+}
+```
+
+`access_token` is the dashboard token. It is short-lived; exchange the `refresh_token` at
+`POST /v1/auth/refresh` rather than re-sending credentials. If your account has MFA enabled,
+sign-in answers `401` with code `mfa_required` and a `pending_authentication_token` to
+complete at `POST /v1/auth/verify_mfa`.
+
+<Warning>
+  A dashboard token carries your full capability set in the workspace. It is not an agent
+  credential and must never be given to an agent. Agents get a runtime key, which cannot
+  write policy.
+</Warning>
+
+Set both for the rest of the docs:
+
+<Snippet file="env-agents.mdx" />
+
+## Runtime keys
+
+This is the credential your agent carries. Create a runtime and the key is returned exactly
+once:
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/runtimes \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "procurement agent", "mode": "test", "scopes": ["payment.*"]}'
+```
+
+```typescript TypeScript
+const res = await fetch(
+  `https://api.kordio.io/v1/workspaces/${process.env.KORDIO_WORKSPACE}/runtimes`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.KORDIO_DASHBOARD_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: "procurement agent",
+      mode: "test",
+      scopes: ["payment.*"],
+    }),
+  },
+);
+const { data } = await res.json();
+```
+
+```python Python
+import os, requests
+
+res = requests.post(
+    f"https://api.kordio.io/v1/workspaces/{os.environ['KORDIO_WORKSPACE']}/runtimes",
+    headers={"Authorization": f"Bearer {os.environ['KORDIO_DASHBOARD_TOKEN']}"},
+    json={"name": "procurement agent", "mode": "test", "scopes": ["payment.*"]},
+)
+data = res.json()["data"]
+```
+
+</CodeGroup>
+
+```json 201 Created
+{
+  "data": {
+    "id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
+    "name": "procurement agent",
+    "status": "active",
+    "mode": "test",
+    "scopes": ["payment.*"],
+    "api_key_prefix": "krt_test_9f3",
+    "api_key": "krt_test_9f3a1c7e42b8d05a6e1f8c3d",
+    "last_used_at": null,
+    "created_at": "2026-08-04T09:04:11Z"
+  }
+}
+```
+
+Kordio stores only a digest and compares it in constant time. `api_key` cannot be shown again;
+if you lose it, rotate the runtime. Keys are prefixed by mode, `krt_test_…` or `krt_live_…`,
+so a test key can never reach live data.
+
+Send it as a bearer token:
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/actions \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Idempotency-Key: order-4471" \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "3f1c...", "action_type": "payment.create", "cost_cents": 12000}'
+```
+
+### Scopes
+
+`scopes` restricts which action types a key may even ask about: an exact match
+(`payment.create`), a namespace wildcard (`payment.*`), or `*`. An empty array means
+unrestricted.
+
+A request outside the key's scopes is refused by an intrinsic rule before any policy runs, and
+the decision names `runtime_scope` as what refused it.
+
+<Warning>
+  Scope narrowly and use one runtime per agent workload. Runtimes are unlimited on every paid
+  plan, so a shared key buys you nothing and costs you the ability to revoke one agent without
+  stopping the rest.
+</Warning>
+
+### Rotating and revoking
+
+A runtime is `active`, `suspended`, or `revoked`, changed with `PATCH
+/v1/workspaces/{slug}/runtimes/{id}`. Suspending stops new authorizations and leaves history
+intact; revoking is permanent.
+
+Neither rewrites decisions already made, and neither invalidates a cosignature already issued,
+which stays verifiable until it expires. Cosignature lifetime is minutes, so that window is
+small, but it is not zero. See [what Kordio guarantees](/agents/guarantees#revocation-is-not-retroactive).
+
+## Dashboard tokens and capabilities
+
+Everything under `/v1/workspaces/{slug}/*` uses the identity token: creating runtimes, writing
+policy, reading intents, resolving approvals, managing billing.
+
+```bash
+curl https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policies \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN"
+```
+
+Capabilities come from your role in that workspace, and the API enforces them:
+
+| Role | Capabilities |
+| --- | --- |
+| `owner` | `read`, `approve`, `manage_policy`, `manage_members` |
+| `admin` | `read`, `approve`, `manage_policy` |
+| `member` | `read` |
+
+| Capability | Lets you |
+| --- | --- |
+| `read` | See runtimes, policies, sessions, intents, funds, the audit trail |
+| `approve` | Resolve a held action |
+| `manage_policy` | Write policy, create and rotate runtimes, manage webhook endpoints |
+| `manage_members` | Invite and remove people, change roles, manage billing, delete the workspace |
+
+`approve` and `manage_policy` are deliberately separate. The person who authorises a payment
+need not be the person who can widen the rule that held it, which is most of what an auditor is
+looking for.
+
+<Note>
+  Every role can read the audit trail, including `member`. An audit trail only some people can
+  see is not much of one.
+</Note>
+
+## Test and live
+
+Every credential is bound to one mode and the two never mix. A test runtime key cannot touch
+live data, and a live runtime cannot be created on a plan without live mode.
+
+Test mode runs the same policy engine, returns the same shapes, and issues real cosignatures.
+That is deliberate: you can prove an entire integration, including signature verification
+inside your own executor, before any money is at stake.
+
+<Note>
+  Control-plane responses carry no `livemode` field. The mode is a property of the runtime, so
+  read it from `GET /v1/workspaces/{slug}/runtimes/{id}`, or from `runtime_mode` inside a
+  decision. The ledger API does echo `livemode` on every response; the two APIs differ here.
+</Note>
+
+## When something is refused
+
+| Status | Meaning |
+| --- | --- |
+| `401` | Missing (`runtime_key_required`) or unrecognised (`invalid_runtime_key`) credential. |
+| `403` | Recognised but not permitted: a capability you lack (`insufficient_role`), or a decision that was denied. |
+| `404` | The resource exists but not in a workspace or runtime you can reach. Kordio does not confirm existence across a tenancy boundary. |
+
+<Note>
+  A `404` where you expected a `403` is usually a workspace or runtime mismatch, not a missing
+  record.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authorize an agent action" icon="shield-check" href="/agents/quickstart">
+    Put the check in front of a real spend.
+  </Card>
+  <Card title="Errors" icon="triangle-alert" href="/agents/errors">
+    Every code and every rule that can refuse.
+  </Card>
+</CardGroup>

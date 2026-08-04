@@ -1,0 +1,85 @@
+---
+title: "Spend control"
+sidebarTitle: "Overview"
+description: "Decide what an agent may do before it does it, and sign the answer."
+icon: "shield-check"
+keywords: ["runtime", "session", "policy", "intent", "cosignature", "headroom"]
+---
+
+Spend control answers one question, and it answers it the same way for a payment, a paid tool
+call, or anything else an agent asks for: **may this runtime take this action, right now?**
+The answer comes back in the same request, naming the rule that decided, and an allowed answer
+comes back signed.
+
+<CardGroup cols={2}>
+  <Card title="Authorize an agent action" icon="shield-check" href="/agents/quickstart">
+    Gate your first action in test mode, in about five minutes.
+  </Card>
+  <Card title="How a decision is reached" icon="shield" href="/agents/concepts">
+    Evaluation order, states, outcomes, and headroom.
+  </Card>
+</CardGroup>
+
+## The vocabulary
+
+Six terms cover the whole API. They are the words in the wire format, so they are worth
+learning exactly.
+
+### Runtime
+
+A scoped identity for one agent workload. Holds a hashed `krt_` API key, a mode (`test` or
+`live`), and a list of action types the key may even ask about. One per agent workload;
+runtimes are unlimited on every paid plan.
+
+### Session
+
+A budget envelope for one run. Spend is committed against it, and it is the unit that stops a
+loop rather than a single mistake. Sessions can delegate to child sessions.
+
+### Policy
+
+The rules attached to a runtime. Caps, windows, rate limits, allowlists, approval thresholds,
+and a condition language for everything they do not cover. Policy is data, not code: it
+validates when you write it, not when an agent is waiting.
+
+### Action
+
+One request for authorization, and the record it leaves. An action carries an `action_type`, an
+optional `resource`, and a `cost_cents`. Payments are a separate resource, `payment_intent`,
+evaluated under the same policy.
+
+### Decision
+
+What came back: an `outcome` of `allowed`, `requires_approval` or `denied`, the `rule` that
+produced it, and the `headroom` remaining on every limit that applied.
+
+### Cosignature
+
+A short-lived ES256 signature over an allowed decision, so whoever executes the action can
+verify the authority without calling us, and without trusting the agent that carried it.
+
+## What Kordio never does
+
+Kordio holds no funds, no accounts, and none of your credentials. It decides and it signs;
+your own rails and your own keys execute.
+
+That is a deliberate limit with a consequence worth stating plainly: an executor that never
+checks with Kordio and never verifies a cosignature is not governed by it. The control layer
+binds the paths you route through it.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Writing a policy" icon="scale" href="/agents/policies">
+    Every rule kind, the typed shorthands, and the condition language.
+  </Card>
+  <Card title="What Kordio guarantees" icon="lock" href="/agents/guarantees">
+    Ordering, reservations, replay, and the failure modes.
+  </Card>
+  <Card title="Verifying an authorization" icon="signature" href="/agents/cosignatures">
+    Check a cosignature offline, without calling us.
+  </Card>
+  <Card title="API reference" icon="terminal" href="/agents/api-reference/introduction">
+    Every endpoint, generated from the OpenAPI spec.
+  </Card>
+</CardGroup>

@@ -1,0 +1,107 @@
+---
+title: "Spend control API"
+sidebarTitle: "API reference"
+description: "Every control-layer endpoint, generated from the OpenAPI specification."
+icon: "terminal"
+keywords: ["/v1/agent", "/v1/workspaces", "krt_", "starting_after"]
+---
+
+This reference is generated from the spend control [OpenAPI
+specification](/agents/api-reference/openapi.yaml). Each endpoint page shows the request,
+parameters, response schema, and live examples.
+
+## Base URL
+
+```
+https://api.kordio.io
+```
+
+## Two credentials
+
+| Prefix | Credential | Used by |
+| --- | --- | --- |
+| `/v1/agent/*` | Runtime key, `krt_live_…` or `krt_test_…` | Your agent |
+| `/v1/workspaces/{slug}/*` | Identity bearer token | A person or your backend |
+| `/v1/cosign/verify`, `/.well-known/jwks.json` | None | Anyone verifying a signature |
+
+A runtime key can never write policy, and a dashboard token can never authorize an action as an
+agent. See [authentication](/agents/authentication).
+
+## Response envelope
+
+Single resources wrap the object in `data`:
+
+```json
+{ "data": { "id": "9b2ef0c1-...", "state": "pending" } }
+```
+
+The two authorize endpoints add the decision alongside it, and a cosignature when one was issued:
+
+```json
+{ "data": { }, "decision": { }, "cosignature": "eyJhbGciOi..." }
+```
+
+The `cosignature` key is **absent**, not `null`, when no signature was issued.
+
+<Note>
+  Control-plane responses carry no `livemode` and no `request_id`. The ledger API includes both.
+  If you are building one client for both, do not assume a shared envelope.
+</Note>
+
+## Pagination
+
+Workspace lists take `limit` (default 50, clamped 1..200) and `starting_after`, which is the
+**id of the last record on the previous page** rather than an opaque cursor.
+
+```bash
+curl "https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/action_intents?limit=50&starting_after=9b2ef0c1-6a3d-4e75-8c19-2f4b7d5a0e63" \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN"
+```
+
+```json
+{ "data": [], "has_more": false, "next_cursor": null }
+```
+
+Three things differ from [the ledger's pagination](/ledger/pagination):
+
+- The parameter is `starting_after`, not `cursor`.
+- `has_more` is true whenever a page filled to the limit, so a final page that exactly fills it
+  still reports `true`. Fetch until you get an empty page rather than trusting the flag alone.
+- An unknown or foreign `starting_after` is ignored and returns the first page rather than an
+  error.
+
+`GET /v1/workspaces` and `GET /v1/workspaces/{slug}/funds` are not paginated.
+
+Most lists are newest first. Memberships, invitations and policy modules are ascending, and
+policy modules paginate by `name` rather than by id.
+
+## Idempotency
+
+| Endpoint | Mechanism | Missing |
+| --- | --- | --- |
+| `POST /v1/agent/actions` | `Idempotency-Key` header | `422 idempotency_key_required` |
+| `POST /v1/agent/payment_intents` | `idempotency_key` body field | `400` |
+| Everything else | None | — |
+
+Keys are scoped per runtime. A replay returns the original intent and the original decision, at
+the original status.
+
+## Errors
+
+```json
+{ "error": { "message": "...", "code": "..." } }
+```
+
+See the [errors reference](/agents/errors) for every code, and for the rules that can appear in
+`decision.rule`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authorize an agent action" icon="shield-check" href="/agents/quickstart">
+    The five-minute path through these endpoints.
+  </Card>
+  <Card title="Ledger API reference" icon="code" href="/ledger/api-reference/introduction">
+    The other API on this host.
+  </Card>
+</CardGroup>

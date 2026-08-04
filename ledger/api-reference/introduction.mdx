@@ -1,0 +1,75 @@
+---
+title: "Ledger API"
+sidebarTitle: "API reference"
+description: "Every ledger endpoint, generated from the OpenAPI specification."
+icon: "code"
+keywords: ["/v1/accounts", "/v1/transactions", "livemode", "request_id"]
+---
+
+This reference is generated from the ledger [OpenAPI
+specification](/ledger/api-reference/openapi.yaml). Each endpoint page shows the request,
+parameters, response schema, and live examples.
+
+## Base URL
+
+```
+https://api.kordio.io
+```
+
+OAuth lives at `/oauth/token`; ledger resources live under `/v1`.
+
+<Info>
+  Looking for `/v1/agent/*`? Those belong to the other API on this host. See the [spend control
+  API reference](/agents/api-reference/introduction).
+</Info>
+
+## Authentication
+
+Every call carries a Bearer access token from the `client_credentials` grant. Reads need
+`ledger:read`; writes need `ledger:write`; period-close mutations need `ledger:period_close`.
+Scopes do not imply each other. See [Authentication](/ledger/authentication).
+
+## Response envelope
+
+Single-resource responses wrap the object in `data` alongside `livemode` and `request_id`:
+
+```json
+{ "data": { "object": "account", "id": "cash:usd" }, "livemode": false, "request_id": "req_..." }
+```
+
+Every resource carries an `object` tag, and `request_id` is also returned as the `X-Request-Id`
+header — quote it when contacting support.
+
+Lists are flat, with `data`, `has_more` and `next_cursor`. A `total` is present on some lists and
+absent on others, so treat it as optional. See [Pagination](/ledger/pagination).
+
+Failures carry `error.{code,message,hint,docs_url}`; see the [errors reference](/ledger/errors).
+
+## CSV output
+
+Report endpoints also return CSV, via `?format=csv` or an `Accept: text/csv` header. If both are
+present, the header wins. Only read endpoints offer CSV.
+
+## Discover before you hardcode
+
+`GET /v1/_meta/capabilities` reports the feature flags, hard limits, plan, tenant status and
+organization model in force for your tenant. Negotiate against it rather than baking limits into
+your client.
+
+## Not on this API
+
+Some surfaces are deliberately dashboard-only, so that a leaked machine credential cannot use
+them: inviting members, changing roles, transferring ownership, and the 1-click connector
+onboarding flow. Connector *sync history* is readable at `GET /v1/sources/{id}/syncs`, but
+connecting, syncing and disconnecting are console operations.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Post your first transaction" icon="play" href="/ledger/quickstart">
+    The shortest path through these endpoints.
+  </Card>
+  <Card title="Spend control API reference" icon="terminal" href="/agents/api-reference/introduction">
+    The other API on this host.
+  </Card>
+</CardGroup>

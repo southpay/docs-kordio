@@ -1,0 +1,46 @@
+<CodeGroup>
+
+```typescript TypeScript
+import { createHmac, timingSafeEqual } from "crypto";
+
+export function verifySignature(
+  rawBody: string,
+  header: string,
+  secret: string,
+): boolean {
+  const parts = Object.fromEntries(
+    header.split(",").map((p) => p.split("=") as [string, string]),
+  );
+  const timestamp = parts["t"];
+  const expected = parts["v1"];
+  if (!timestamp || !expected) return false;
+
+  const computed = createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest("hex");
+
+  const a = Buffer.from(computed);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+```
+
+```python Python
+import hmac, hashlib
+
+def verify_signature(raw_body: bytes, header: str, secret: str) -> bool:
+    parts = dict(p.split("=", 1) for p in header.split(","))
+    timestamp = parts.get("t")
+    expected = parts.get("v1")
+    if not timestamp or not expected:
+        return False
+    signed = f"{timestamp}.{raw_body.decode()}"
+    computed = hmac.new(secret.encode(), signed.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(computed, expected)
+```
+
+</CodeGroup>
+
+Verify against the **raw** request body, not a re-serialized object, and compare in constant
+time. This routine is identical for both Kordio APIs: one handler can verify deliveries from
+either.

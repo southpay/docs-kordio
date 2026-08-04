@@ -28,12 +28,11 @@
     }
   },
   "styling": {
-    "eyebrows": "section",
+    "eyebrows": "breadcrumbs",
     "codeblocks": "dark"
   },
   "appearance": {
-    "strict": true,
-    "default": "light"
+    "default": "system"
   },
   "thumbnails": {
     "appearance": "light"
@@ -50,10 +49,14 @@
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
-    "href": "https://kordio.io"
+    "href": "/"
   },
   "navbar": {
     "links": [
+      {
+        "label": "kordio.io",
+        "href": "https://kordio.io"
+      },
       {
         "label": "Support",
         "href": "mailto:support@kordio.io"
@@ -82,65 +85,117 @@
       "linkedin": "https://www.linkedin.com/company/kordio/"
     }
   },
+  "redirects": [
+    { "source": "/quickstart", "destination": "/ledger/quickstart" },
+    { "source": "/concepts", "destination": "/ledger/concepts" },
+    { "source": "/money-flows", "destination": "/ledger/money-flows" },
+    { "source": "/reconciliation", "destination": "/ledger/reconciliation" },
+    { "source": "/feeds", "destination": "/ledger/feeds" },
+    { "source": "/pagination", "destination": "/ledger/pagination" },
+    { "source": "/invariants", "destination": "/ledger/invariants" },
+    { "source": "/why-not-postgres", "destination": "/ledger/why-not-postgres" },
+    { "source": "/authentication", "destination": "/ledger/authentication" },
+    { "source": "/errors", "destination": "/ledger/errors" },
+    { "source": "/webhooks", "destination": "/ledger/webhooks" },
+    { "source": "/api-reference/introduction", "destination": "/ledger/api-reference/introduction" },
+    { "source": "/agents/api", "destination": "/agents/api-reference/introduction" }
+  ],
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Overview",
+        "icon": "compass",
+        "pages": [
+          "index",
+          "positioning",
+          "changelog"
+        ]
+      },
+      {
+        "tab": "Spend control",
+        "icon": "shield-check",
         "pages": [
           {
-            "group": "Start here",
+            "group": "Get started",
             "pages": [
-              "index",
+              "agents/index",
               "agents/quickstart",
-              "authentication"
+              "agents/authentication",
+              "agents/why"
             ]
           },
           {
-            "group": "Agent control layer",
+            "group": "Core concepts",
             "pages": [
               "agents/concepts",
               "agents/policies",
+              "agents/spend-tokens",
               "agents/approvals",
-              "agents/cosignatures",
-              "agents/api"
+              "agents/cosignatures"
             ]
           },
           {
-            "group": "Why Kordio",
+            "group": "Guarantees",
             "pages": [
-              "positioning",
-              "why-not-postgres",
-              "invariants"
-            ]
-          },
-          {
-            "group": "The ledger",
-            "pages": [
-              "quickstart",
-              "concepts",
-              "money-flows",
-              "reconciliation",
-              "feeds",
-              "pagination"
+              "agents/guarantees",
+              "agents/ledger-projection"
             ]
           },
           {
             "group": "Reference",
             "pages": [
-              "webhooks",
-              "errors",
-              "changelog"
+              "agents/errors",
+              "agents/webhooks",
+              "agents/api-reference/introduction"
             ]
+          },
+          {
+            "group": "Endpoints",
+            "openapi": "agents/api-reference/openapi.yaml"
           }
         ]
       },
       {
-        "tab": "API Reference",
+        "tab": "Ledger",
+        "icon": "book-open",
         "pages": [
-          "api-reference/introduction",
+          {
+            "group": "Get started",
+            "pages": [
+              "ledger/index",
+              "ledger/quickstart",
+              "ledger/authentication",
+              "ledger/why"
+            ]
+          },
+          {
+            "group": "Core concepts",
+            "pages": [
+              "ledger/concepts",
+              "ledger/money-flows",
+              "ledger/reconciliation",
+              "ledger/feeds",
+              "ledger/pagination"
+            ]
+          },
+          {
+            "group": "Guarantees",
+            "pages": [
+              "ledger/invariants",
+              "ledger/why-not-postgres"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "ledger/errors",
+              "ledger/webhooks",
+              "ledger/api-reference/introduction"
+            ]
+          },
           {
             "group": "Endpoints",
-            "openapi": "api-reference/openapi.yaml"
+            "openapi": "ledger/api-reference/openapi.yaml"
           }
         ]
       }

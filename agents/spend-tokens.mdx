@@ -1,0 +1,136 @@
+---
+title: "Spend tokens"
+sidebarTitle: "Spend tokens"
+description: "A single-use ceiling an agent mints against its own session."
+icon: "ticket"
+keywords: ["spend_token", "amount_ceiling_cents", "counterparty", "spend_token_ceiling"]
+---
+
+A spend token is a single-use ceiling an agent mints against one of its own sessions and
+presents later on a payment. It turns "this agent may spend $200" into "this agent may spend
+$200, once, to this vendor."
+
+<Info>
+  A spend token only ever **narrows**. It cannot widen a policy, raise a cap, or authorize
+  something policy would refuse. It is a self-imposed constraint an agent commits to in advance,
+  not a grant of authority.
+</Info>
+
+## When you would use one
+
+The pattern is a planning step that runs before an execution step, often in a different process
+or a different agent.
+
+A planner decides it will buy one thing from one vendor for at most $200. It mints a token
+pinned to that vendor at that ceiling and hands the token id to whatever does the buying. The
+executor cannot then spend more, spend it twice, or spend it somewhere else — even though it
+holds a runtime key whose policy would allow all three.
+
+Without the token, the executor's authority is whatever the policy allows for the rest of the
+session. With it, the authority is what the planner actually intended.
+
+## Minting one
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/spend_tokens \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"session_id\": \"$KORDIO_SESSION_ID\",
+    \"amount_ceiling_cents\": 20000,
+    \"counterparty\": \"acme-supplies.example\",
+    \"expires_at\": \"2026-08-04T18:00:00Z\"
+  }"
+```
+
+```json 201 Created
+{
+  "data": {
+    "id": "b81d4f2c-7a06-4e39-95c2-1f8b3d0a6e57",
+    "session_id": "3f1c8a92-5d41-4c8e-9f2b-7a6e1d0c4b83",
+    "amount_ceiling_cents": 20000,
+    "counterparty": "acme-supplies.example",
+    "expires_at": "2026-08-04T18:00:00Z",
+    "status": "issued",
+    "consumed_at": null,
+    "created_at": "2026-08-04T09:20:33Z"
+  }
+}
+```
+
+`counterparty` and `expires_at` are both optional. A token with neither is just a one-shot
+ceiling.
+
+## Spending against one
+
+Cite it by id on the payment:
+
+```bash
+curl -X POST https://api.kordio.io/v1/agent/payment_intents \
+  -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"session_id\": \"$KORDIO_SESSION_ID\",
+    \"amount_cents\": 12000,
+    \"counterparty\": \"acme-supplies.example\",
+    \"spend_token_id\": \"b81d4f2c-7a06-4e39-95c2-1f8b3d0a6e57\",
+    \"idempotency_key\": \"order-4471\"
+  }"
+```
+
+## How it is evaluated
+
+The token is checked **first**, and it can only refuse. If it refuses, the policy engine never
+runs.
+
+| `decision.rule` | Why |
+| --- | --- |
+| `spend_token_unusable` | Status is not `issued`, or the token has expired. |
+| `spend_token_ceiling` | `amount_cents` exceeds `amount_ceiling_cents`. |
+| `spend_token_counterparty` | The token is pinned to a different counterparty. |
+
+If the token passes, normal policy evaluation runs on top. A token for $200 against a policy
+that caps payments at $150 authorizes $150, not $200 — the tighter constraint always wins.
+
+On any non-denied outcome the token is consumed and moves to `status: consumed`. It cannot be
+presented again.
+
+<Warning>
+  A spend token is not a substitute for policy. Anything holding a runtime key can mint one, so
+  a token constrains only the code path that agrees to present it. Policy constrains every path.
+  Use tokens to narrow what a specific execution step may do, never as the only limit on a
+  runtime.
+</Warning>
+
+## Lifecycle
+
+`status` moves through `issued` → `consumed`, or to `expired` when its `expires_at` passes, or
+`void`. Expiry is swept in the background and emits both a `spend_token.expired` audit event and
+a `spend_token.expired` webhook, so you can react to a plan that was made and never executed.
+
+Consumption races safely: if two payments cite the same token at once, exactly one consumes it.
+The loser releases its budget reservation and the intent moves to `failed` with
+`spend_token_unusable`.
+
+## Reading them back
+
+Minting is agent-side only. From the dashboard side the tokens are read-only:
+
+```bash
+curl "https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/spend_tokens?session_id=$KORDIO_SESSION_ID" \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN"
+```
+
+A token cited by a held payment also appears on that payment's approval impact, so an approver
+sees the ceiling and the pinned counterparty before deciding.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Writing a policy" icon="scale" href="/agents/policies">
+    The limits a token narrows, rather than replaces.
+  </Card>
+  <Card title="Holding spend for a person" icon="user-check" href="/agents/approvals">
+    What an approver sees, including the token.
+  </Card>
+</CardGroup>

@@ -1,54 +1,87 @@
 ---
 title: "Writing a policy"
+sidebarTitle: "Policies"
+description: "Caps, windows, allowlists, and the condition language."
 icon: "scale"
-description: "Caps, windows, allowlists and approval thresholds, plus the condition language for everything they do not cover."
+keywords: ["cost_cap", "spend_window", "rate_limit", "approval_threshold", "allowlist", "condition"]
 ---
 
-A policy is data, not code. It always terminates, it is validated when you write it rather than when an agent is waiting, it diffs in review, and any UI can render it.
-
-That is deliberate. A policy engine standing in front of money should be analysable, not Turing-complete.
+A policy is data, not code. It always terminates, it is validated when you write it rather than
+when an agent is waiting, it diffs in review, and any UI can render it. A policy engine standing
+in front of money should be analysable, not Turing-complete.
 
 ## Your first policy
 
-Attach a policy to a runtime:
+A policy carries two things: **typed columns** for the common cases, and a general **`rules`
+array** for everything else. The columns are shorthand — they compile into the same rules — so
+use them when they fit.
 
 ```bash
-curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/policies \
-  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policies \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "runtime_id": "...",
-    "rules": [
-      {"kind": "cost_cap", "max_cents": 50000, "rule_name": "per_payment_ceiling"},
-      {"kind": "approval_threshold", "above_cents": 20000},
-      {"kind": "spend_window", "max_cents": 200000, "window_seconds": 3600}
-    ]
-  }'
+  -d "{
+    \"runtime_id\": \"$KORDIO_RUNTIME_ID\",
+    \"per_transaction_cap_cents\": 50000,
+    \"approval_threshold_cents\": 20000,
+    \"velocity_cap_cents\": 200000,
+    \"velocity_window_seconds\": 3600
+  }"
 ```
 
-That policy says: never more than $500 in one action, hold anything over $200 for a person, and never more than $2,000 in any rolling hour.
+Never more than $500 in one action, hold anything over $200 for a person, and never more than
+$2,000 in any rolling hour. The third rule is the one that catches a retry loop.
 
-The third rule is the one that catches the retry loop. The first two, on their own, would let nineteen individually reasonable $340 charges through.
+### The typed columns, and the rule name each produces
+
+This mapping matters, because the name you see in `decision.rule` is **not** the underlying
+rule kind:
+
+| Column | Compiles to | `decision.rule` |
+| --- | --- | --- |
+| `per_transaction_cap_cents` | `cost_cap` | `per_transaction_cap` |
+| `velocity_cap_cents` + `velocity_window_seconds` | `spend_window` | `velocity_cap` |
+| `monthly_cap_cents` | `monthly_spend_cap` | `monthly_cap` |
+| `approval_threshold_cents` | `approval_threshold` | `approval_threshold` |
+| `counterparty_allowlist` | `resource_allowlist` | `counterparty_allowlist` |
+
+Write the same limit in the `rules` array instead and it reports under its `rule_name`, which
+defaults to the kind. Both are fine; just do not expect a cap set through
+`per_transaction_cap_cents` to come back as `cost_cap`.
 
 ## Rule kinds
 
 | Kind | Settings | What it does |
 | --- | --- | --- |
-| `cost_cap` | `max_cents`, `action_types` | Refuses a single action above the ceiling. |
-| `spend_window` | `max_cents`, `window_seconds`, `action_types` | Refuses once spend in a rolling window exceeds the cap. |
-| `monthly_spend_cap` | `max_cents`, `action_types` | Refuses once calendar-month spend exceeds the cap. |
-| `rate_limit` | `max_actions`, `window_seconds`, `action_types` | Refuses on count rather than amount. Catches loops that spend nothing per call. |
-| `approval_threshold` | `above_cents`, `action_types` | Holds for a person instead of refusing. |
+| `cost_cap` | `max_cents` | Refuses a single action above the ceiling. |
+| `spend_window` | `max_cents`, `window_seconds` | Refuses once spend in a rolling window exceeds the cap. |
+| `monthly_spend_cap` | `max_cents` | Refuses once calendar-month spend exceeds the cap. |
+| `rate_limit` | `max_actions`, `window_seconds` | Refuses on count rather than amount. Catches loops that spend nothing per call. |
+| `approval_threshold` | `above_cents` | Holds for a person instead of refusing. |
 | `action_allowlist` | `allow` | Only these action types are permitted. |
-| `resource_allowlist` | `allow`, `action_types` | Only these counterparties or resources are permitted. |
+| `resource_allowlist` | `allow` | Only these counterparties or resources are permitted. |
+| `condition` | `when`, `effect` | A boolean expression over the action. |
 
-Every kind takes an optional `rule_name`, echoed back in the decision. Every rule is assigned a stable `id` on write, so a decision read months later can still name the exact rule that produced it.
+Every kind takes an optional `rule_name`, echoed back in the decision, and every kind except
+`action_allowlist` takes an optional `action_types` array to scope it; an empty array means all
+action types. Every rule is assigned a stable `id` on write, so a decision read months later can
+still name the exact rule that produced it.
 
-An unknown kind, or a missing setting, is rejected when the policy is written. Never when an agent is waiting on an answer.
+An unknown kind, or a missing setting, is rejected when the policy is written. Never when an
+agent is waiting on an answer.
+
+<Note>
+  An `allow` array that is empty is a no-op, not a deny-all. To deny by default, use
+  `mode: "allowlist"` instead.
+</Note>
+
+Window rules count both action intents in `pending`, `requires_approval` or `completed`, and
+payment intents in `pending`, `requires_approval`, `executed` or `settled`. Spend on one
+consumes the other's headroom.
 
 ## The condition language
 
-The typed kinds cover the common cases. `condition` is the open one: a boolean expression over the action, with an effect.
+`condition` is the open one: a boolean expression over the action, with an effect.
 
 ```json
 {
@@ -70,54 +103,116 @@ The typed kinds cover the common cases. `condition` is the open one: a boolean e
 
 **Effects** are `deny` (the default), `allow`, or `require_approval`.
 
-**Combinators** are `all_of`, `any_of` and `not`, nestable to ten levels.
+**Combinators** are `all_of`, `any_of` and `not`, nestable to ten levels. An empty `all_of` or
+`any_of` is rejected at write time.
 
-**Fields** are `action_type`, `resource`, `cost_cents`, `currency`, `runtime_id`, `runtime_mode`, `session_id`, and any `metadata.*` dot path.
+**Fields** are `action_type`, `resource`, `cost_cents`, `currency`, `runtime_id`,
+`runtime_mode`, `session_id`, and any `metadata.*` dot path.
 
-**Operators** are `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `not_in`, `contains`, `starts_with`, `ends_with`, `exists`.
+**Operators** are `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `not_in`, `contains`,
+`starts_with`, `ends_with`, `exists`.
 
-A missing field never raises. It simply fails to match. Unknown fields and operators are rejected at write time.
+A missing field never raises; it simply fails to match. Unknown fields and operators are
+rejected at write time.
+
+<Note>
+  The ordered comparisons (`gt`, `gte`, `lt`, `lte`) are numeric. A non-numeric operand makes
+  the comparison `false` rather than an error — so a typo in a `metadata.*` path silently fails
+  to match rather than blowing up. Use `exists` when you need to distinguish "absent" from
+  "false".
+</Note>
 
 ## Blocklist and allowlist
 
 A policy is `blocklist` by default: the action is permitted unless a rule denies it.
 
-Set `mode: "allowlist"` and it inverts. The action is denied unless one of that policy's `allow` rules matches, reported as the rule `not_allowlisted`. A `deny` rule still overrides an `allow`.
+Set `mode: "allowlist"` and it inverts. The action is denied unless one of that policy's `allow`
+rules matches, reported as the rule `not_allowlisted`. A `deny` rule still overrides an `allow`.
 
 Each allowlist policy is an independent gate. Attach two and both must be satisfied.
 
 <Warning>
-  Allowlist mode is the right default for a runtime that touches real money. Start by denying everything and naming what you permit, rather than trying to enumerate every way an agent could go wrong.
+  Allowlist mode is the right default for a runtime that touches real money. Start by denying
+  everything and naming what you permit, rather than trying to enumerate every way an agent
+  could go wrong.
 </Warning>
 
 ## Reusable modules
 
-Modules are named rule sets scoped to a workspace. A policy imports them by name and they compile in ahead of its own rules.
+Modules are named rule sets scoped to a workspace. A policy imports them by name and they
+compile in ahead of its own rules.
 
 ```bash
-curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/policy_modules \
-  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policy_modules \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name": "vendor-allowlist", "rules": [...]}'
+  -d '{"name": "vendor-allowlist", "rules": [
+        {"kind": "resource_allowlist", "allow": ["acme-supplies.example"]}
+      ]}'
 ```
 
 ```json
-{ "runtime_id": "...", "imports": ["vendor-allowlist"], "rules": [] }
+{ "runtime_id": "7d2a...", "imports": ["vendor-allowlist"], "rules": [] }
 ```
 
-Editing a module changes every policy importing it. A policy importing an unknown module will not save, and a module still imported by a policy will not delete. Modules do not import other modules, so composition is one level deep and cannot cycle.
+Modules are addressed by `name`, not by id, so `GET /v1/workspaces/{slug}/policy_modules/vendor-allowlist`
+reads one back.
+
+Editing a module changes every policy importing it. A policy importing an unknown module will
+not save, and a module still imported by a policy will not delete. Modules do not import other
+modules, so composition is one level deep and cannot cycle.
 
 ## Test before you apply
 
-Never guess what a policy does. Ask:
+Never guess what a policy does. Preview a draft you have not saved:
 
 ```bash
-curl -X POST https://api.kordio.io/v1/workspaces/$WORKSPACE/policy_previews \
-  -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policy_previews \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"runtime_id": "...", "action_type": "payment.create", "cost_cents": 75000}'
+  -d "{
+    \"runtime_id\": \"$KORDIO_RUNTIME_ID\",
+    \"action_type\": \"payment.create\",
+    \"cost_cents\": 75000,
+    \"policy\": { \"per_transaction_cap_cents\": 50000 }
+  }"
 ```
 
-You get back the decision the policy would produce, including which rule decides and what headroom would remain. Nothing is recorded and no budget is reserved.
+```json 200 OK
+{
+  "data": {
+    "outcome": "denied",
+    "rule": "per_transaction_cap",
+    "detail": { "max_cents": 50000, "requested_cents": 75000 },
+    "headroom": { "per_action_cap_cents": 50000 },
+    "policy_snapshot": []
+  }
+}
+```
 
-The same evaluation is available to your agent at `POST /v1/agent/actions/simulate`, which is how you show someone the consequence of a change before they save it.
+Nothing is persisted: no policy, no session, no intent, no audit event. `imports` resolve
+against the workspace's real saved modules, so you can preview a draft that builds on modules
+already in place. `session_budget_cents` sets the synthetic session budget and defaults to
+`100000`.
+
+Previewing needs only the `read` capability, deliberately — it is not a mutation.
+
+The same evaluation is available to your agent at `POST /v1/agent/actions/simulate`, which does
+record an `action.simulated` audit event.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Holding spend for a person" icon="user-check" href="/agents/approvals">
+    What `approval_threshold` produces, and how it resolves.
+  </Card>
+  <Card title="Spend tokens" icon="ticket" href="/agents/spend-tokens">
+    A single-use ceiling that narrows a policy for one payment.
+  </Card>
+  <Card title="Errors" icon="triangle-alert" href="/agents/errors">
+    Every rule that can appear in `decision.rule`.
+  </Card>
+  <Card title="API reference" icon="terminal" href="/agents/api-reference/introduction">
+    The full policy schema.
+  </Card>
+</CardGroup>

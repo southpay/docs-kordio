@@ -1,37 +1,42 @@
 ---
-title: "Ledger quickstart"
+title: "Post your first transaction"
+sidebarTitle: "Quickstart"
+description: "From credentials to a posted transaction and a balance."
 icon: "play"
-description: "Mint a token, create two accounts, post a balanced transaction, and read the balance. For the control layer, start with Authorize an agent action."
+tag: "5 min"
+keywords: ["/v1/transactions", "Idempotency-Key", "postings", "dry_run"]
 ---
 
-This walkthrough takes you from credentials to a posted transaction in four `curl` calls. Each call matches the [API reference](/api-reference/introduction).
+This walkthrough takes you from credentials to a posted transaction and its balance. Each call
+matches the [API reference](/ledger/api-reference/introduction).
 
 <Info>
-  The base URL is `https://api.kordio.io`. OAuth lives at `/oauth/token`; the ledger resources live under `/v1`.
+  **Wrong page?** This is the ledger: accounts, postings, balances, reconciliation. If you are
+  here to decide whether an AI agent may spend, start with [Spend control: authorize an agent
+  action](/agents/quickstart).
 </Info>
+
+The base URL is `https://api.kordio.io`. OAuth lives at `/oauth/token`; ledger resources live
+under `/v1`.
 
 ## 1. Get your client credentials
 
-Create an OAuth client from the dashboard, or use one seeded for you in development. A client has a `client_id`, a `client_secret` (shown once), a mode (`test` or `live`), and a set of granted scopes. Read operations need `ledger:read`; writes need `ledger:write`.
+Create an OAuth client from the dashboard, or use one seeded for you in development. A client has a `client_id`, a `client_secret` (shown once), a mode (`test` or `live`), and a set of granted scopes. Read operations need `ledger:read`; writes need `ledger:write`, and neither implies the other.
 
-```bash
-export CLIENT_ID="client_xxxxxxxxxxxxxxxxxxxxxxxx"
-export CLIENT_SECRET="sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-```
+<Snippet file="env-ledger.mdx" />
 
 ## 2. Mint an access token
 
 Exchange your credentials for a short-lived token using the `client_credentials` grant. Send the credentials as HTTP Basic auth.
 
 ```bash
-curl -X POST https://api.kordio.io/oauth/token \
-  -u "$CLIENT_ID:$CLIENT_SECRET" \
-  -d 'grant_type=client_credentials&scope=ledger:read ledger:write'
+export KORDIO_TOKEN=$(curl -s -X POST https://api.kordio.io/oauth/token \
+  -u "$KORDIO_CLIENT_ID:$KORDIO_CLIENT_SECRET" \
+  -d 'grant_type=client_credentials&scope=ledger:read ledger:write' \
+  | jq -r '.access_token')
 ```
 
-The response is an HS256 JWT valid for one hour:
-
-```json
+```json 200 OK
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "Bearer",
@@ -40,13 +45,7 @@ The response is an HS256 JWT valid for one hour:
 }
 ```
 
-Save the token for the calls below:
-
-```bash
-export TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-```
-
-The token carries your tenant, mode, and scopes. There is no `?test=` flag: the client's mode decides whether you touch test or live data. See [Authentication](/authentication) for the full flow.
+The token carries your tenant, mode, and scopes, and is valid for one hour. There is no `?test=` flag: the client's mode decides whether you touch test or live data. See [Authentication](/ledger/authentication) for the full flow.
 
 ## 3. Create two accounts
 
@@ -54,12 +53,12 @@ An account is a named bucket of value in one currency. You choose the `id`. Crea
 
 ```bash
 curl -X POST https://api.kordio.io/v1/accounts \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"id":"cash:usd","name":"Cash","type":"asset","currency":"USD"}'
 
 curl -X POST https://api.kordio.io/v1/accounts \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"id":"revenue:subscriptions","name":"Subscriptions","type":"revenue","currency":"USD"}'
 ```
@@ -90,7 +89,7 @@ A transaction is a set of postings that balance per currency. Move 10.00 USD (`1
 
 ```bash
 curl -X POST https://api.kordio.io/v1/transactions \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: invoice_001" \
   -d '{"postings":[
@@ -99,9 +98,8 @@ curl -X POST https://api.kordio.io/v1/transactions \
       ]}'
 ```
 
-<Warning>
-  Amounts are JSON **strings** of integer minor units (`"1000"`). On write you may send an integer or a string; reads always return a string. Parse money with a big-integer or decimal type, never a JS `number`, since 18-decimal token amounts can exceed `2^53`. See [Core concepts](/concepts#integer-minor-units).
-</Warning>
+Amounts are JSON strings of integer minor units — [parse them with a big-integer
+type](/ledger/concepts#integer-minor-units), never a JS `number`.
 
 The response includes the transaction and its postings:
 
@@ -129,24 +127,40 @@ Read the cash account's balance:
 
 ```bash
 curl https://api.kordio.io/v1/accounts/cash:usd/balance \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $KORDIO_TOKEN"
 ```
 
-You can read a historical balance by passing `?at=<ISO 8601 timestamp>`, which computes the balance from each posting's `value_date`. See [Core concepts](/concepts#value-date-semantics).
+```json 200 OK
+{
+  "data": {
+    "object": "balance",
+    "account": "cash:usd",
+    "currency": "USD",
+    "currency_decimals": 2,
+    "posted": "1000",
+    "pending": "0",
+    "available": "1000"
+  },
+  "livemode": false,
+  "request_id": "req_..."
+}
+```
+
+You can read a historical balance by passing `?at=<ISO 8601 timestamp>`, which computes the balance from each posting's `value_date`. See [value-date semantics](/ledger/concepts#value-date-semantics).
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Core concepts" icon="book" href="/concepts">
+  <Card title="Core concepts" icon="book" href="/ledger/concepts">
     Double-entry, corrections, idempotency, multi-currency, and value dates.
   </Card>
-  <Card title="Webhooks" icon="webhook" href="/webhooks">
+  <Card title="Webhooks" icon="webhook" href="/ledger/webhooks">
     Subscribe to events, verify signatures, and replay from the events tail.
   </Card>
-  <Card title="Pagination and expand" icon="list" href="/pagination">
+  <Card title="Pagination and expand" icon="list" href="/ledger/pagination">
     Walk list endpoints with cursors and inline related objects.
   </Card>
-  <Card title="API reference" icon="code" href="/api-reference/introduction">
+  <Card title="API reference" icon="code" href="/ledger/api-reference/introduction">
     Every endpoint, generated from the OpenAPI spec.
   </Card>
 </CardGroup>

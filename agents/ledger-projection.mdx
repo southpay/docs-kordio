@@ -1,0 +1,107 @@
+---
+title: "Where the ledger fits"
+sidebarTitle: "Ledger projection"
+description: "How decisions become balanced postings, and what that buys you."
+icon: "link"
+keywords: ["funds", "unprojected_cents", "ledger_ready", "spend:", "projection"]
+---
+
+Every reservation the control layer takes is mirrored into a double-entry ledger, so decisions
+become balanced postings your finance team can reconcile. You do not write those postings and
+you do not need to read the ledger docs to use spend control.
+
+The result is that agent spend arrives pre-reconciled: "what did this agent spend last month" is
+a balance query, not an archaeology project across application logs.
+
+## The account layout
+
+Each workspace owns its own books, and each runtime owns an account inside them, named
+`spend:{runtime_id}`. So the accounting graph mirrors your agent topology without you designing
+one.
+
+```bash
+curl https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/funds \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN"
+```
+
+```json 200 OK
+{
+  "data": {
+    "available_cents": 260000,
+    "held_cents": 240000,
+    "committed_cents": 240000,
+    "ledger_committed_cents": 228000,
+    "unprojected_cents": 12000,
+    "currency": "USD",
+    "ledger_ready": true,
+    "accounts": [
+      {
+        "account_id": "spend:7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
+        "runtime_id": "7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2",
+        "runtime_name": "procurement agent",
+        "committed_cents": 228000,
+        "held_cents": 240000,
+        "currency": "USD"
+      }
+    ]
+  }
+}
+```
+
+## Reading the figures
+
+| Field | Means |
+| --- | --- |
+| `available_cents` | Unspent budget across every active session. |
+| `held_cents` | Reserved by intents waiting on a person. |
+| `committed_cents` | Spent, as the control layer sees it. This is the authoritative number. |
+| `ledger_committed_cents` | Posted to the ledger so far. |
+| `unprojected_cents` | The gap between the two, floored at zero. |
+
+`unprojected_cents` is the one to understand. It is normally near zero and transiently non-zero
+while projections settle. A persistently growing value means projections are backing up — worth
+an alert, and never a reason to distrust `committed_cents`, which does not depend on the ledger
+at all.
+
+## The projection is never in the authorization path
+
+A slow or unavailable ledger can delay a posting. It can never delay or change a decision.
+
+If the ledger is unreachable, this endpoint degrades rather than failing: `ledger_ready` comes
+back `false`, `accounts` is empty, and `ledger_committed_cents` reads zero. The control-plane
+figures above it stay correct throughout.
+
+<Note>
+  `ledger_ready: false` means "we could not read the books", not "the books are wrong". Treat it
+  as a monitoring signal, not a spend signal.
+</Note>
+
+## Using the books directly
+
+The projected postings are ordinary ledger transactions, so everything in the [ledger
+concepts](/ledger/concepts) applies to them: balances at any instant, statements over a window,
+reconciliation against an external snapshot, and the reports.
+
+Two things are worth knowing before you query them:
+
+- **Intents carry `ledger_transaction_id`** once projected, so you can go from a decision to its
+  postings directly rather than matching on amount and timestamp.
+- **The ledger knows nothing about agents.** It speaks accounts, postings, transactions and
+  balances. `spend:{runtime_id}` is just an account id we chose; no ledger code path treats it
+  specially.
+
+## One plan, both APIs
+
+The ledger is not sold separately and is not metered separately. Every tier includes it, and
+nothing about the projection depends on your plan.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Ledger: post your first transaction" icon="play" href="/ledger/quickstart">
+    Write to the books yourself, alongside the projection.
+  </Card>
+  <Card title="Ledger: reconciliation" icon="git-compare" href="/ledger/reconciliation">
+    Match projected spend against what the rail actually charged.
+  </Card>
+</CardGroup>

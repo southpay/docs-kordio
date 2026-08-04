@@ -1,100 +1,62 @@
 ---
 title: "Where Kordio fits"
+sidebarTitle: "Positioning"
+description: "Who each half of Kordio is for, and where the boundary sits."
 icon: "map"
-description: "What sits between an agent and a payment rail, why the obvious answers do not cover it, and where the ledger comes in."
+keywords: ["control layer", "ledger", "agent spend"]
 ---
 
-Give an agent a credential and it can spend. Nothing between it and the rail asks whether it should. The card sees a valid card, the API key sees a valid key, and both are right, because neither was ever told what this agent is for.
-
-Kordio is the thing that is told. Before the agent pays a vendor or calls a paid tool, it asks, and gets an answer in the same request: allowed, needs a person, or denied, naming the rule that decided. Allowed answers come back signed, so whatever executes can verify the authority instead of trusting the agent that carries it. Kordio holds no funds, no accounts, and none of your credentials.
-
-<Info>
-  **The decision boundary.** The moment something non-human can initiate spend you would want to review, you are at the layer this product serves. Before that, a hard-coded cap in your own code is fine. After it, the question is not whether you have a control layer but whether it can be bypassed and whether it can prove what it permitted.
-</Info>
-
-## A prompt is not a limit
-
-The first version is always a rule in the prompt, or an `if amount > 500` in the orchestrator. Both work until the day they matter.
-
-A prompt is advice to a model that is free to ignore it, and it leaves no record you can hand anyone. A hard-coded check is real, but it lives inside the agent it is supposed to constrain, so shipping a new agent means writing it again, changing a limit means a deploy, and nothing outside that process can say what was permitted or why.
-
-Policy in Kordio is data, not code. It validates when written rather than when an agent is waiting, it diffs in review, and the decision it produced is still on record months later, naming the exact rule.
-
-## A card limit stops one mistake, not nineteen
-
-Spend controls on a card or a virtual account are real enforcement, and for a single ceiling they are enough.
-
-What they do not see is intent. A retry loop making the same reasonable-looking charge nineteen times is nineteen approvals, each individually under the limit. Neither does a card cover the paid API call that is not a card transaction at all, which is where most agent spend actually goes. Kordio runs before the rail, applies caps, windows, rate limits and allowlists across payments and tool calls together, and holds anything over a threshold for a person.
-
-Use both. The card is the floor under everything; the control layer is what knows what this agent was doing.
-
-## Agent payment protocols answer a different question
-
-AP2, ACP and the trusted-agent work at the card networks are standardising how an agent proves *who it is* at checkout. That is real and worth adopting.
-
-None of them decides whether your agent should be spending your money at all, and none covers the paid tool call that is not a payment. They authenticate; Kordio authorises. If you adopt one, Kordio still runs first and answers the question the protocol does not ask.
-
-## The ledger underneath
-
-Every reservation the control layer takes is mirrored into a double-entry ledger, so decisions become balanced postings your finance team can reconcile. Each workspace owns its books and each runtime owns an account inside them, so what one agent spent is a query rather than an archaeology project.
-
-It is included in every tier rather than sold separately. Plenty of teams also want the books on their own terms, and the rest of this section is the argument for that: why a correct ledger is harder than a schema, and what Kordio guarantees.
-
-### You start on Postgres
-
-Almost everyone does, and it works until it doesn't. The first retried request that double-posts, the first balance that is off by a cent, the first reconciliation that will not tie out: each one sends you back to rebuild an invariant you did not know you needed yet. Balanced-per-currency enforcement, append-only history, idempotency, atomic multi-posting writes, derived balances that stay fast, multi-currency, point-in-time history, reconciliation. You end up building the ledger anyway, one incident at a time, in production, with real money on it.
-
-Kordio is that correctness layer, already built and enforced. The full argument, including where Postgres genuinely is the right tool (we run on it), is on the [why not just use Postgres?](/why-not-postgres) page.
-
-### A processor moves the money, not the meaning
-
-A payment processor like Stripe authorizes, captures, and settles payments across the card networks and bank rails. It is very good at moving money. It never becomes your system of record for what that money meant.
-
-The processor tells you a charge succeeded. It does not tell you which accounts that charge affected, in what currency, or what your balances are as a result. That is the ledger's job, and you still need it. A common setup is to take payments through a processor and write the corresponding transactions into Kordio as the record of truth.
+Give an agent a credential and it can spend. Nothing between it and the rail asks whether it
+should. The card sees a valid card, the API key sees a valid key, and both are right, because
+neither was ever told what this agent is for.
 
 <Info>
-  Kordio is not a payment processor. It does not touch card or bank rails. It records and proves the accounting behind whatever moved the money.
+  **The decision boundary.** The moment something non-human can initiate spend you would want
+  to review, you are at the layer this product serves. Before that, a hard-coded cap in your
+  own code is fine. After it, the question is not whether you have a control layer but
+  whether it can be bypassed, and whether it can prove what it permitted.
 </Info>
 
-### Accounting software answers your finance team, not your product
+## Two products, one host
 
-Accounting software like QuickBooks or Xero maintains your company's books, produces statements for tax and compliance, and is operated by humans through a UI on a periodic close cycle. It answers your finance team.
+**Spend control** is the thing that is told. Before the agent pays a vendor or calls a paid
+tool, it asks, and gets an answer in the same request: allowed, needs a person, or denied,
+naming the rule that decided. Allowed answers come back signed, so whatever executes can
+verify the authority instead of trusting the agent that carries it. Kordio holds no funds, no
+accounts, and none of your credentials.
 
-Your product asks different questions, at a different speed. It needs a programmable system of record it writes to in real time over an API, as transactions happen, at the granularity of your application's own accounts. That is a developer ledger. Many companies run both, with the ledger feeding summarized figures into their accounting system.
+**The ledger** is a programmable double-entry system of record. Accounts, balanced postings,
+derived balances, point-in-time history, and reconciliation as a first-class operation. It
+stands entirely on its own, and plenty of teams want it for reasons that have nothing to do
+with agents.
 
-### Versus other developer ledger APIs
-
-Fragment.dev and similar developer ledger APIs sit in the same category as Kordio, so here the question is not category but where each one draws its lines. Compare on the axes that change how your system behaves under real money, not on surface ergonomics.
-
-- **Where correctness is enforced.** Kordio enforces the invariants in the database itself, with deferred Postgres triggers that reject an unbalanced or mutated write at `COMMIT`, not only in an application layer a future code path can route around. The guarantees are published on the [invariants](/invariants) page so you can hold the platform to them rather than infer them.
-- **Opinionated or unopinionated semantics.** Kordio ships primitives, not a vertical. It bakes in no domain vocabulary: you define the accounting graph with account templates, and the platform guarantees the invariants, never the business meaning. A ledger that models your domain for you is faster on day one and a wall on day one hundred, when your model and its model disagree.
-- **Reconciliation as a primitive, not a report.** Reconciliation here is a first-class operation: replayable runs that match an external snapshot against postings and mark what tied out. For most teams reconciliation is the actual job, so whether it is a primitive or a spreadsheet you rebuild each month is a real axis.
-- **Event and state model.** Every write emits a durable, replayable event, and balances are derived rather than stored, so consumers can rebuild their view from the log and you can always reconstruct state exactly. A ledger whose balances are stored is a ledger that can disagree with itself.
-- **Multi-currency depth.** No code path assumes a single currency, and a cross-currency transaction records an FX snapshot at write time, so a restatement years later reproduces the original rate instead of guessing.
-
-**Pick Kordio if** you want correctness guaranteed at the database layer, a ledger that stays out of your domain model, and reconciliation plus a replayable event log as primitives rather than homework. **Look elsewhere if** you want a turnkey product that models a specific vertical for you and you are willing to inherit its assumptions to move faster on day one.
+The control layer decides what may happen; the ledger records what did. Each is a complete
+API on its own. The control layer just happens to be the ledger's first customer, which is
+the reason to trust both: the ledger is general enough that a real product was built on it
+without special-casing, and the control layer's books are the real thing rather than an audit
+log wearing accounting vocabulary.
 
 ## Is this for you?
 
-**Yes, if something non-human can start a payment or a paid API call on your behalf.** An agent buying supplies, booking freight, managing ad budget, or just burning through model and tool spend at a rate nobody predicted. You want a rule that runs before the money moves and a record afterwards that names what permitted it.
+**Yes, if something non-human can start a payment or a paid API call.** An agent buying
+supplies, booking freight, managing ad budget, or just burning through model and tool spend
+at a rate nobody predicted. You want a rule that runs before the money moves and a record
+afterwards that names what permitted it. That is [spend control](/agents/why).
 
-**Yes, separately, if you need an auditable money system of record.** A treasury product, a marketplace splitting funds, an FX desk, a SaaS company billing its own usage. The ledger stands on its own and is included either way.
+**Yes, separately, if you need an auditable money system of record.** A treasury product, a
+marketplace splitting funds, an FX desk, a SaaS company billing its own usage. That is the
+[ledger](/ledger/why), and it is included either way.
 
-**No, if you only need bookkeeping for your own company's taxes and statements.** That is what accounting software is for. Reach for QuickBooks or Xero.
+**No, if you only need bookkeeping for your own company's taxes and statements.** That is
+what accounting software is for. Reach for QuickBooks or Xero.
 
-## Where to go next
+## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Authorize an agent action" icon="shield-check" href="/agents/quickstart">
-    Gate a real action in test mode, in five minutes.
+  <Card title="Where a control layer fits" icon="shield" href="/agents/why">
+    Why a prompt, an `if` statement, a card limit, and AP2 each stop short.
   </Card>
-  <Card title="Writing a policy" icon="scale" href="/agents/policies">
-    Caps, windows, allowlists, and the condition language.
-  </Card>
-  <Card title="Verifying an authorization" icon="signature" href="/agents/cosignatures">
-    Why a signed decision beats a stored one.
-  </Card>
-  <Card title="Ledger quickstart" icon="rocket" href="/quickstart">
-    From credentials to a posted transaction in four calls.
+  <Card title="Why a ledger API" icon="book-open" href="/ledger/why">
+    Versus Postgres, versus a processor, versus accounting software, versus the other ledger APIs.
   </Card>
 </CardGroup>

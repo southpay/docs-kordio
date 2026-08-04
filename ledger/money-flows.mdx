@@ -1,16 +1,20 @@
 ---
 title: "Money flows"
+sidebarTitle: "Money flows"
+description: "How value moves through accounts as balanced postings."
 icon: "arrow-right-left"
-description: "How value moves through accounts as balanced postings, with diagrams and the resulting entries."
+keywords: ["reversal", "refund", "multi-currency", "postings"]
 ---
 
 Every movement of value in the ledger is a transaction made of balanced postings. A posting names an `account`, an `amount` in minor units, a `direction` (`debit` or `credit`), and a `currency`. A transaction is valid only when its debits equal its credits in every currency it touches.
 
 The diagrams below trace common shapes. The account ids (`cash`, `revenue`, `assets:bank`, `fees`) are illustrative names you choose; the platform attaches no meaning to them.
 
-<Warning>
-  The minor-unit amounts in the diagrams and tables below (`1000`, `2500`, ...) are written as bare numbers for readability, but on the wire every monetary value is a JSON **string** of integer minor units, for example `"1000"`. Parse money with a big-integer or decimal type, never a JS `number`. See [Core concepts](/concepts#integer-minor-units).
-</Warning>
+<Note>
+  Amounts below are written as bare numbers for readability. On the wire every monetary value is
+  a JSON string of integer minor units — [parse them with a big-integer
+  type](/ledger/concepts#integer-minor-units).
+</Note>
 
 ## A simple credit into one account
 
@@ -124,16 +128,16 @@ flowchart LR
 ## Where to go next
 
 <CardGroup cols={2}>
-  <Card title="Core concepts" icon="book" href="/concepts">
+  <Card title="Core concepts" icon="book" href="/ledger/concepts">
     The rules behind these shapes, in prose.
   </Card>
-  <Card title="Invariants" icon="shield-check" href="/invariants">
+  <Card title="Invariants" icon="shield-check" href="/ledger/invariants">
     The guarantees that keep every transaction balanced.
   </Card>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
+  <Card title="Quickstart" icon="rocket" href="/ledger/quickstart">
     Post your first transaction in four calls.
   </Card>
-  <Card title="API reference" icon="code" href="/api-reference/introduction">
+  <Card title="API reference" icon="code" href="/ledger/api-reference/introduction">
     Every endpoint, generated from the spec.
   </Card>
 </CardGroup>

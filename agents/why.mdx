@@ -1,0 +1,77 @@
+---
+title: "Where a control layer fits"
+sidebarTitle: "Why Kordio"
+description: "Why a prompt, an if statement, and a card limit each stop short."
+icon: "circle-help"
+keywords: ["AP2", "ACP", "spend controls", "policy engine"]
+---
+
+Everyone builds the first version of this themselves, and the first version is always one of
+three things. Each of them works until the day it matters.
+
+## A prompt is not a limit
+
+The first version is a rule in the system prompt. A prompt is advice to a model that is free
+to ignore it, and it leaves no record you can hand anyone afterwards.
+
+Policy in Kordio is data, not code. It validates when you write it rather than when an agent
+is waiting, it diffs in review, any UI can render it, and the decision it produced is still on
+record months later, naming the exact rule.
+
+## Your orchestrator cannot constrain itself
+
+The second version is `if amount > 500` in the orchestrator. This is real enforcement, and it
+is the honest competitor to this product, so here is the honest objection to it.
+
+It lives inside the thing it is supposed to constrain. Shipping a new agent means writing it
+again. Changing a limit means a deploy. Nothing outside that process can say what was
+permitted or why, which means the answer to "who approved this" is a code review from six
+weeks ago. And the check and the spend are in the same trust domain, so anything that
+compromises the agent compromises the limit at the same moment.
+
+The value of moving it out is not that the logic is better. It is that the logic is somewhere
+the agent cannot reach.
+
+## A card limit stops one mistake, not nineteen
+
+Spend controls on a card or a virtual account are real enforcement, and for a single ceiling
+they are enough.
+
+What they do not see is intent. A retry loop making the same reasonable-looking charge
+nineteen times is nineteen approvals, each individually under the limit. Neither does a card
+cover the paid API call that is not a card transaction at all, which is where most agent spend
+actually goes.
+
+Kordio runs before the rail, applies caps, windows, rate limits and allowlists across payments
+and tool calls together, and holds anything over a threshold for a person. Use both. The card
+is the floor under everything; the control layer is what knows what this agent was doing.
+
+## Agent payment protocols answer a different question
+
+AP2, ACP and the trusted-agent work at the card networks are standardising how an agent proves
+*who it is* at checkout. That is real and worth adopting.
+
+None of them decides whether your agent should be spending your money at all, and none covers
+the paid tool call that is not a payment. They authenticate; Kordio authorises. If you adopt
+one, Kordio still runs first and answers the question the protocol does not ask.
+
+## What Kordio deliberately does not do
+
+Kordio holds no funds, no accounts, and none of your credentials. It decides and it signs;
+your own rails and your own keys execute.
+
+That limit has a consequence worth stating plainly: an executor that never checks with Kordio
+and never verifies a cosignature is not governed by it. The control layer binds the paths you
+route through it. Put the check in front of the spend, in code your agent cannot skip, and
+verify the signature where the action is actually carried out.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authorize an agent action" icon="shield-check" href="/agents/quickstart">
+    Gate a real action in test mode, in about five minutes.
+  </Card>
+  <Card title="What Kordio guarantees" icon="lock" href="/agents/guarantees">
+    Ordering, reservations, replay, signature lifetime, and what happens when we are down.
+  </Card>
+</CardGroup>

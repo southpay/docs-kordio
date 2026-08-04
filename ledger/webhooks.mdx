@@ -1,0 +1,139 @@
+---
+title: "Webhooks"
+sidebarTitle: "Webhooks"
+description: "Subscribe to ledger events, verify signatures, and replay from the tail."
+icon: "webhook"
+keywords: ["transaction.created", "signing_secret", "Kordio-Signature", "events tail"]
+---
+
+Webhooks push a signed copy of every state-changing ledger event to an endpoint you control. The
+same payloads are also available to pull from the [events tail](#events-tail-and-replay), so you
+can choose push, pull, or both.
+
+<Info>
+  Spend control events are a separate subscription, registered per workspace with a different
+  event set. See [Spend control: webhooks](/agents/webhooks). The signature scheme is identical,
+  so one verification routine covers both.
+</Info>
+
+## Register an endpoint
+
+Ledger endpoints are per tenant and need `ledger:write`.
+
+```bash
+curl -X POST https://api.kordio.io/v1/webhook_endpoints \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://app.example.com/webhooks/kordio-ledger",
+    "enabled_events": ["transaction.created", "transaction.reversed"]
+  }'
+```
+
+```json 201 Created
+{
+  "data": {
+    "object": "webhook_endpoint",
+    "id": "whe_...",
+    "url": "https://app.example.com/webhooks/kordio-ledger",
+    "enabled_events": ["transaction.created", "transaction.reversed"],
+    "signing_secret": "whsec_test_4bSFH1YTkjwsgiMrHMwWJfJTIzsov60WxxsziZAE"
+  },
+  "livemode": false,
+  "request_id": "req_..."
+}
+```
+
+<Warning>
+  `signing_secret` is returned only once, at creation. Store it immediately. If you lose it,
+  rotate the endpoint's secret to mint a new one.
+</Warning>
+
+<Note>
+  The field is `signing_secret` here and `secret` on the spend control side. The two APIs differ;
+  do not share a parser.
+</Note>
+
+## Event types
+
+| Type | Fires when |
+| --- | --- |
+| `account.created` | An account is created |
+| `account.classification_changed` | An account's classification changes |
+| `transaction.created` | A transaction is written |
+| `transaction.updated` | A transaction's metadata is patched |
+| `transaction.committed` | A pending transaction is committed |
+| `transaction.reversal_created` | A reversal transaction is created (fires before `transaction.reversed`) |
+| `transaction.reversed` | The original is linked to its reversal |
+| `transaction.refund_created` | A refund is created; payload carries `refunds` and `refund_amount` |
+| `webhook_endpoint.secret_rotated` | An endpoint's signing secret is rotated |
+| `reconciliation.run_completed` | A run finishes; payload carries `matched_count`, `unmatched_count`, `pass_counts`, `status` |
+| `reconciliation.match_created` | A manual match is recorded |
+| `reconciliation.match_reversed` | A match is undone; the postings reopen |
+| `reconciliation.break_auto_resolved` | A match absorbed a residual within the run's tolerance |
+| `external_transaction.ignored` | An ingested row is excluded from matching; payload carries `reason` |
+
+Ingestion itself emits no per-row events; a 10k-row batch would flood the stream. Use
+`reconciliation.run_completed` plus `GET /v1/external_transactions?status=open` for the break
+workflow. Additional `oauth_client.*`, `member.*` and `tenant.*` events exist for
+account-management surfaces. Subscribe only to what you handle.
+
+<Info>
+  `transaction.reversal_created` is emitted before `transaction.reversed` on purpose. A
+  subscriber rebuilding state from the tail can apply the new transaction before applying the
+  link from the original to its reversal.
+</Info>
+
+## Verify the signature
+
+Each delivery includes a `Kordio-Signature` header: an HMAC-SHA256 over
+`<timestamp>.<raw_body>`, keyed by the endpoint's signing secret.
+
+<Snippet file="verify-signature.mdx" />
+
+## Respond and retry
+
+A delivery succeeds on any `2xx`. Any non-`2xx`, timeout, or network error is retried with
+exponential backoff:
+
+| Attempt | Delay after previous failure |
+| --- | --- |
+| 1 | 30 seconds |
+| 2 | 5 minutes |
+| 3 | 1 hour |
+| 4 | 6 hours |
+| 5 | 24 hours |
+
+After the fifth failed attempt the delivery is marked dead. Return `2xx` quickly and do heavy
+work asynchronously. Events carry stable ids, so treat handlers as at-least-once and deduplicate
+on the event `id`.
+
+You can inspect deliveries for an endpoint, count failures, redeliver a specific delivery, or
+send a test event from the [webhook endpoints
+API](/ledger/api-reference/introduction).
+
+## Events tail and replay
+
+Every state-changing operation also lands in the durable events log, with the same payloads
+webhooks deliver. If an endpoint was down or you need to backfill, pull from the tail instead of
+relying on retries.
+
+```bash
+curl "https://api.kordio.io/v1/events?type=transaction.created&since=24h" \
+  -H "Authorization: Bearer $KORDIO_TOKEN"
+```
+
+The events list is cursor-paginated, newest first, and filterable by `type` and time. Fetch a
+single event with `GET /v1/events/{id}`. This log is the authoritative audit trail and the safe
+way to rebuild state after an outage.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Reconciliation" icon="git-compare" href="/ledger/reconciliation">
+    The workflow `reconciliation.run_completed` drives.
+  </Card>
+  <Card title="Pagination" icon="list" href="/ledger/pagination">
+    Walking the events tail with cursors.
+  </Card>
+</CardGroup>

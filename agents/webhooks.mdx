@@ -1,0 +1,148 @@
+---
+title: "Webhooks"
+sidebarTitle: "Webhooks"
+description: "Subscribe to control-layer events and verify signed deliveries."
+icon: "webhook"
+keywords: ["action.requires_approval", "approval.resolved", "budget.low", "Kordio-Signature"]
+---
+
+Webhooks push a signed copy of every control-layer state change to an endpoint you control.
+The one you actually need is `action.requires_approval` paired with `approval.resolved`: that
+pair is how an agent waits on a person without polling.
+
+<Info>
+  Ledger events are a separate subscription with a different registration endpoint and a
+  different event set. See [Ledger: webhooks](/ledger/webhooks). The signature scheme is
+  identical, so one verification routine covers both.
+</Info>
+
+## Register an endpoint
+
+Endpoints are per workspace and need the `manage_policy` capability.
+
+```bash
+curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/webhook_endpoints \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://app.example.com/webhooks/kordio",
+    "enabled_events": ["action.requires_approval", "approval.resolved", "budget.low"]
+  }'
+```
+
+```json 201 Created
+{
+  "data": {
+    "id": "c93f7b21-4e08-4a56-b7d3-05e2a9c14f60",
+    "url": "https://app.example.com/webhooks/kordio",
+    "enabled_events": ["action.requires_approval", "approval.resolved", "budget.low"],
+    "status": "active",
+    "secret": "whsec_4bSFH1YTkjwsgiMrHMwWJfJTIzsov60WxxsziZAE",
+    "created_at": "2026-08-04T09:30:00Z"
+  }
+}
+```
+
+<Warning>
+  `secret` is returned exactly once, at creation. Store it immediately. If you lose it, rotate
+  the endpoint with `POST /v1/workspaces/{slug}/webhook_endpoints/{id}/rotate`, which mints a new
+  one and stops the old one verifying immediately.
+</Warning>
+
+<Note>
+  An **empty** `enabled_events` array subscribes to every event type, not none. Name the types
+  you handle.
+</Note>
+
+## Event types
+
+| Type | Fires when |
+| --- | --- |
+| `action.requires_approval` | A rule held an action for a person. **The one to subscribe to.** |
+| `action.completed` | An agent reported an authorized action succeeded. |
+| `action.failed` | An agent reported it failed; the reservation is released. |
+| `payment.requires_approval` | A payment is held for a person. |
+| `payment.executed` | A payment was carried out by the provider. |
+| `payment.failed` | A payment failed; the reservation is released. |
+| `approval.resolved` | A person approved or denied. On the payment path the payload carries `resolution`. |
+| `budget.low` | A session dropped to 10% or less of its budget after an executed payment. |
+| `spend_token.expired` | A spend token passed its expiry unused. |
+
+An unrecognised name in `enabled_events` is rejected with a `422` at registration.
+
+<Warning>
+  Never treat `approval.resolved` as permission on its own. It tells you a decision was made, not
+  what it was. Read the outcome, and for anything that moves money verify the
+  [cosignature](/agents/cosignatures) at the point of execution.
+</Warning>
+
+## Delivery shape
+
+```json
+{
+  "id": "e0a4c72f-1b95-4d68-a3f0-7c25e91b4d38",
+  "type": "action.requires_approval",
+  "created_at": "2026-08-04T09:31:12Z",
+  "data": { }
+}
+```
+
+Header: `Kordio-Signature: t=<unix>,v1=<hex>`, an HMAC-SHA256 over `<timestamp>.<raw_body>`
+keyed by the endpoint secret.
+
+## Verify the signature
+
+<Snippet file="verify-signature.mdx" />
+
+```typescript Handler
+app.post(
+  "/webhooks/kordio",
+  express.raw({ type: "application/json" }),
+  (req, res) => {
+    const sig = req.headers["kordio-signature"] as string;
+    if (!verifySignature(req.body.toString(), sig, process.env.KORDIO_WEBHOOK_SECRET!)) {
+      return res.status(401).json({ error: "invalid signature" });
+    }
+    const event = JSON.parse(req.body.toString());
+    if (event.type === "approval.resolved") {
+      // resume the agent
+    }
+    res.json({ received: true });
+  },
+);
+```
+
+## Respond and retry
+
+A delivery succeeds on any `2xx`. Anything else, including a timeout or a connection error, is
+retried with polynomial backoff for up to eight attempts, after which the delivery is marked
+failed with its last error recorded.
+
+Return `2xx` quickly and do heavy work asynchronously. Events carry stable ids, so treat handlers
+as at-least-once and deduplicate on the event `id`.
+
+## If you would rather poll
+
+Everything a webhook reports is also readable. The audit trail is the durable version of the same
+story:
+
+```bash
+TRACE_ID="5e8c1a47-2b93-4d06-a7f1-9c3e05b8d24a"   # from decision.data.trace_id
+
+curl "https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/audit_events?trace_id=$TRACE_ID" \
+  -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN"
+```
+
+Filtering by `trace_id` pulls one action's whole history across authorization, approval and
+outcome. Every role can read it, including `member`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Holding spend for a person" icon="user-check" href="/agents/approvals">
+    The flow these events drive.
+  </Card>
+  <Card title="API reference" icon="terminal" href="/agents/api-reference/introduction">
+    Endpoint management and the audit events API.
+  </Card>
+</CardGroup>

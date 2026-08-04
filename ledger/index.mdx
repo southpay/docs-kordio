@@ -1,0 +1,95 @@
+---
+title: "Ledger API"
+sidebarTitle: "Overview"
+description: "A programmable double-entry system of record over HTTP."
+icon: "book-open"
+keywords: ["account", "posting", "transaction", "balance", "double-entry"]
+---
+
+You model accounts, post balanced transactions, and read balances over a plain HTTP API. The
+ledger guarantees the accounting invariants; you write the business logic. You get primitives,
+not opinions: a treasury startup, a marketplace, an FX desk, and a SaaS company billing its own
+usage all use the same four.
+
+<CardGroup cols={2}>
+  <Card title="Post your first transaction" icon="play" href="/ledger/quickstart">
+    From credentials to a posted transaction, in four calls.
+  </Card>
+  <Card title="Ledger concepts" icon="layers" href="/ledger/concepts">
+    Double-entry, corrections, idempotency, multi-currency, value dates.
+  </Card>
+</CardGroup>
+
+## The four primitives
+
+### Account
+
+A named bucket of value in one currency. You choose the `id` and the `currency`, and both are
+immutable once set. Accounts carry one of five accounting types — `asset`, `liability`,
+`revenue`, `expense`, `equity` — which are informational for reporting.
+
+### Posting
+
+One line of a transaction. It says: this account moved by this amount, in this direction
+(`debit` or `credit`), in this currency, effective at this `value_date`.
+
+### Transaction
+
+A set of postings that move together. The ledger enforces `sum(debits) == sum(credits)` per
+currency, and rejects anything that does not balance. That is the whole correctness model —
+there is no validation of whether a transaction "makes sense", because the balance rule is what
+makes a double-entry ledger trustworthy.
+
+### Balance
+
+The net of an account's postings, now or at a historical instant. Derived from postings, never
+stored, and computed from `value_date` rather than insertion time.
+
+## A balanced transaction
+
+```json
+{
+  "postings": [
+    { "account": "cash:usd", "amount": "1000", "currency": "USD", "direction": "debit" },
+    { "account": "revenue:subscriptions", "amount": "1000", "currency": "USD", "direction": "credit" }
+  ]
+}
+```
+
+Monetary values cross the wire as JSON strings of integer minor units — [parse them with a
+big-integer type](/ledger/concepts#integer-minor-units), never a JS `number`.
+
+## What makes it safe
+
+<CardGroup cols={2}>
+  <Card title="Append-only" icon="lock" href="/ledger/invariants">
+    Postings are never edited. You correct with a reversal or a refund that references the original.
+  </Card>
+  <Card title="Idempotent" icon="rotate-cw" href="/ledger/concepts#idempotency">
+    Every write carries an `Idempotency-Key`. A replay returns the original transaction.
+  </Card>
+  <Card title="Multi-currency" icon="coins" href="/ledger/concepts#multi-currency">
+    Currency is first class. No code path assumes one, and the balance rule applies per currency.
+  </Card>
+  <Card title="Reconciliation as a primitive" icon="git-compare" href="/ledger/reconciliation">
+    Replayable runs that match an external snapshot against postings.
+  </Card>
+</CardGroup>
+
+## Who uses this
+
+Anyone who needs an auditable record of what money meant, separate from whatever moved it.
+Kordio's own spend control is one such customer — agent spend is projected here as balanced
+postings — but the ledger knows nothing about agents. It speaks accounts, postings, transactions
+and balances.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Why a ledger API" icon="book-open" href="/ledger/why">
+    Versus Postgres, a processor, accounting software, and the other ledger APIs.
+  </Card>
+  <Card title="API reference" icon="code" href="/ledger/api-reference/introduction">
+    Every endpoint, generated from the OpenAPI spec.
+  </Card>
+</CardGroup>

@@ -1,0 +1,136 @@
+---
+title: "OAuth client credentials"
+sidebarTitle: "Authentication"
+description: "Mint a token, pick scopes, and keep test and live apart."
+icon: "key-round"
+keywords: ["client_credentials", "ledger:read", "ledger:write", "insufficient_scope", "livemode"]
+---
+
+The ledger API uses the OAuth 2.0 `client_credentials` grant. A client has a `client_id`, a
+`client_secret` shown once, a mode (`test` or `live`), and a set of granted scopes.
+
+<Info>
+  Integrating spend control instead? It uses runtime keys and identity tokens, documented on
+  [Spend control: runtime keys and dashboard tokens](/agents/authentication). Nothing on this
+  page applies there.
+</Info>
+
+<Snippet file="env-ledger.mdx" />
+
+## Mint an access token
+
+Send your credentials as HTTP Basic auth, or as form fields.
+
+<CodeGroup>
+
+```bash HTTP Basic
+curl -X POST https://api.kordio.io/oauth/token \
+  -u "$KORDIO_CLIENT_ID:$KORDIO_CLIENT_SECRET" \
+  -d 'grant_type=client_credentials&scope=ledger:read ledger:write'
+```
+
+```bash Form body
+curl -X POST https://api.kordio.io/oauth/token \
+  -d 'grant_type=client_credentials' \
+  -d "client_id=$KORDIO_CLIENT_ID" \
+  -d "client_secret=$KORDIO_CLIENT_SECRET" \
+  -d 'scope=ledger:read ledger:write'
+```
+
+</CodeGroup>
+
+```json 200 OK
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "ledger:read ledger:write"
+}
+```
+
+Mint on demand and cache until shortly before expiry. A token stored once and never refreshed
+becomes a dead integration within the hour.
+
+The token carries your tenant, mode, and scopes. There is no `?test=` parameter: the client's
+mode decides which dataset you touch.
+
+## Scopes
+
+| Scope | Grants |
+| --- | --- |
+| `ledger:read` | Read accounts, balances, transactions, postings, events, reports |
+| `ledger:write` | Create, patch, reverse, commit and refund transactions and accounts; manage webhook endpoints, sources and reserves |
+| `ledger:period_close` | Close and reopen accounting periods |
+| `ledger:clients:read` | List and inspect OAuth clients (never returns secrets) |
+| `ledger:clients:write` | Create, rotate and delete OAuth clients |
+
+<Warning>
+  **Scopes do not imply each other.** `ledger:write` does not grant `ledger:read`. A client that
+  both lists and creates needs both scopes named explicitly in the token request. This is the
+  most common cause of an unexpected `403` on a first integration.
+</Warning>
+
+Reading period closes needs only `ledger:read`; only the mutations need `ledger:period_close`.
+
+A token missing the scope an endpoint requires returns `403` with code `insufficient_scope`, plus
+a `WWW-Authenticate` header naming the scope it wanted.
+
+## Managing clients
+
+Clients are self-service, with their own scopes:
+
+```bash
+curl -X POST https://api.kordio.io/v1/oauth_clients \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "billing worker", "scopes": ["ledger:read", "ledger:write"]}'
+```
+
+Secrets are shown in plaintext exactly once, at creation or rotation; only a SHA-256 hash is
+stored.
+
+Rotating with `POST /v1/oauth_clients/{id}/rotate_secret` keeps the **previous secret valid for
+24 hours**, so you can roll a deployment without downtime. Rotating again inside that window
+returns `409 rotation_in_progress`; pass `?force=true` to destroy the old secret immediately.
+
+## Discovery
+
+The authorization server publishes RFC 8414 metadata at
+`GET /.well-known/oauth-authorization-server`, so tooling can discover the token endpoint,
+grants, scopes and signing algorithms without hard-coding them.
+
+Token-endpoint failures follow RFC 6749: `invalid_client`, `invalid_grant`, `invalid_scope`,
+`unsupported_grant_type`.
+
+## Test and live
+
+Every client is bound to one mode and the two never mix. Live and test data are segregated at
+the storage level, so a test client cannot read or write live rows.
+
+Responses echo `livemode` so you can confirm which dataset you touched:
+
+```json
+{ "data": { "object": "account", "id": "cash:usd" }, "livemode": false, "request_id": "req_..." }
+```
+
+<Note>
+  Mode is a property of the **ledger**, not the organization. One organization can hold several
+  ledgers, and each carries its own mode. See `GET /v1/ledgers`.
+</Note>
+
+## Step-up authentication
+
+One operation requires more than a valid token. `POST /v1/tenants/me/anonymize` needs
+`ledger:write` **and** a token issued within the last five minutes, or it returns
+`401 fresh_authentication_required`. Mint a fresh token immediately before calling it.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Post your first transaction" icon="play" href="/ledger/quickstart">
+    Use the token you just minted.
+  </Card>
+  <Card title="Errors" icon="triangle-alert" href="/ledger/errors">
+    Every code the ledger returns, with hints.
+  </Card>
+</CardGroup>

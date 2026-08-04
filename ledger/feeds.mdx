@@ -1,7 +1,9 @@
 ---
 title: "Feeds"
+sidebarTitle: "Feeds"
+description: "Ingest external money movement and work the break queue."
 icon: "import"
-description: "Bring external money movement into the ledger as durable rows, reconcile per source, and work the break queue."
+keywords: ["source", "external_transaction", "inbound_url", "external_ref"]
 ---
 
 A feed is a recurring stream of external money movement (a PSP export, a bank statement, exchange withdrawals) that you reconcile against the ledger. Two resources model it:
@@ -15,7 +17,7 @@ The ledger never connects to your providers and never holds their credentials. Y
 
 ```bash
 curl -X POST "https://api.kordio.io/v1/sources" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
         "name": "stripe",
@@ -32,7 +34,7 @@ Names are unique per ledger and lowercased. `default_account_id` scopes matching
 
 ```bash
 curl -X POST "https://api.kordio.io/v1/sources/{id}/external_transactions" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
         "items": [
@@ -52,13 +54,13 @@ curl -X POST "https://api.kordio.io/v1/sources/{id}/external_transactions" \
 
 Up to 1000 items per request. Ingestion is idempotent on `(source, external_id)`: a re-pushed row never mutates the stored copy and reports `replayed`. Invalid rows report `error` per item without blocking the rest. Amounts are integer minor units, sent as a JSON string (an integer is also accepted on write) and always returned as a string. Parse money with a big-integer or decimal type, never a JS `number`. `raw` retains the provider payload for audit.
 
-`reference_rail`, `reference_kind`, and `reference_value` must be provided together. When the triple resolves to a [transaction external ref](/api-reference/introduction), matching pairs that transaction's posting first, exactly, with strategy `external_ref`. Write the same triple on both sides when you book the internal transaction and reconciliation stops depending on amount heuristics.
+`reference_rail`, `reference_kind`, and `reference_value` must be provided together. When the triple resolves to a [transaction external ref](/ledger/api-reference/introduction), matching pairs that transaction's posting first, exactly, with strategy `external_ref`. Write the same triple on both sides when you book the internal transaction and reconciliation stops depending on amount heuristics.
 
 ## Run reconciliation per source
 
 ```bash
 curl -X POST "https://api.kordio.io/v1/sources/{id}/reconciliation_runs" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "from": "2026-05-14T00:00:00Z", "to": "2026-05-15T00:00:00Z" }'
 ```
@@ -71,7 +73,7 @@ Runs with at most 500 open rows execute synchronously and return the full result
 
 ```bash
 curl "https://api.kordio.io/v1/external_transactions?status=open&source_id={id}" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $KORDIO_TOKEN"
 ```
 
 `status=open` after a run is your break list, durable across runs. Three actions resolve a break:
@@ -88,7 +90,7 @@ Instead of polling and pushing from a cron, mint a per-source push URL:
 
 ```bash
 curl -X POST "https://api.kordio.io/v1/sources/{id}/inbound" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $KORDIO_TOKEN"
 ```
 
 The response contains `inbound_url` and a one-time `inbound_secret`. Calling again rotates both; `DELETE` disables. Sign every push over the exact raw body:
@@ -114,7 +116,7 @@ Create the source with `kind: "cobo"` and Cobo's webhook public key, then paste 
 
 ```bash
 curl -X POST "https://api.kordio.io/v1/sources" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
         "name": "cobo",
@@ -144,7 +146,7 @@ jq '{items: [.data[] | {
   raw: {fee: .fee, type: .type}
 }]}' |
 curl -X POST "https://api.kordio.io/v1/sources/{id}/external_transactions" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $KORDIO_TOKEN" \
   -H "Content-Type: application/json" \
   -d @-
 ```
@@ -156,16 +158,16 @@ Re-running the script is safe; pages overlap and rows replay. The same mapping w
 ## Where to go next
 
 <CardGroup cols={2}>
-  <Card title="Reconciliation" icon="scale-balanced" href="/reconciliation">
+  <Card title="Reconciliation" icon="git-compare" href="/ledger/reconciliation">
     Inline snapshot runs and the matching model.
   </Card>
-  <Card title="Webhooks" icon="webhook" href="/webhooks">
+  <Card title="Webhooks" icon="webhook" href="/ledger/webhooks">
     Event types and signature verification.
   </Card>
-  <Card title="Pagination" icon="list" href="/pagination">
+  <Card title="Pagination" icon="list" href="/ledger/pagination">
     Cursors on the external transactions list.
   </Card>
-  <Card title="API reference" icon="code" href="/api-reference/introduction">
+  <Card title="API reference" icon="code" href="/ledger/api-reference/introduction">
     Sources and external transactions endpoints.
   </Card>
 </CardGroup>
