@@ -91,6 +91,16 @@ Switch on `code` where it is present. `message` is for humans and may change.
 
 `401` - The key was not recognised, or its agent is suspended or revoked.
 
+### identity_token_required
+
+`401` - No dashboard token was presented on a `/v1/workspaces/*` or `/v1/account` call. Agent
+keys do not reach these routes; send a WorkOS access token.
+
+### invalid_identity_token
+
+`401` - The dashboard token was rejected: malformed, expired, or signed by something this
+environment does not trust.
+
 ### insufficient_role
 
 `403` - Your membership does not carry the capability this call requires. Approving needs
@@ -153,12 +163,6 @@ held; retry the execution rather than re-authorizing.
 | `404` | The budget, intent or workspace does not belong to you. Kordio does not confirm existence across a tenancy boundary, so this is a `404` rather than a `403`. |
 | `422` | The request was understood but cannot be applied: a rule that would not compile, an import naming an unknown module, an intent resolved from the wrong state, a module still imported by a policy. |
 | `500` | Unexpected. Retry; if it persists, contact support. |
-
-<Note>
-  **Known inconsistency.** Identity-token authentication failures return a bare string rather
-  than the object above: `{"error": "Missing token"}`. A client that reads `error.code`
-  unconditionally will throw on those responses. Guard for it until this is unified.
-</Note>
 
 ## Next steps
 

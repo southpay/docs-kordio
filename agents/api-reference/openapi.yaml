@@ -2882,6 +2882,8 @@ components:
               enum:
                 - runtime_key_required
                 - invalid_runtime_key
+                - identity_token_required
+                - invalid_identity_token
                 - idempotency_conflict
                 - insufficient_role
                 - idempotency_key_required
