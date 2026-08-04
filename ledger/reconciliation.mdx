@@ -88,7 +88,7 @@ curl -X POST "https://api.kordio.io/v1/reconciliation_runs" \
 
 Matching is per currency and per amount within a time window. The response surfaces three sets: `matched`, `unmatched_external` (items with no posting to pair), and `unmatched_internal` (postings in the window that no external item claimed). The unmatched sets are your break list.
 
-Every monetary value here is a JSON string of integer minor units — [parse them with a
+Every monetary value here is a JSON string of integer minor units. [Parse them with a
 big-integer type](/ledger/concepts#integer-minor-units). On write, `amount` also accepts an
 integer.
 

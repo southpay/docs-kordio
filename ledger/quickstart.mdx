@@ -98,7 +98,7 @@ curl -X POST https://api.kordio.io/v1/transactions \
       ]}'
 ```
 
-Amounts are JSON strings of integer minor units — [parse them with a big-integer
+Amounts are JSON strings of integer minor units. [Parse them with a big-integer
 type](/ledger/concepts#integer-minor-units), never a JS `number`.
 
 The response includes the transaction and its postings:

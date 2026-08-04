@@ -99,7 +99,7 @@ curl "https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/action_intents/$KORD
 ```
 
 Two figures are worth reading carefully. Budget is **already reserved** while an intent is held,
-so approving costs no further headroom — `returns_on_deny_cents` is what denying gives back. And
+so approving costs no further headroom. `returns_on_deny_cents` is what denying gives back. And
 `open_holds` counts every other held intent competing for the same session budget, which is how
 an approver sees that three pending approvals total more than the session can cover.
 
@@ -114,8 +114,8 @@ curl -X POST \
   -H "Authorization: Bearer $KORDIO_DASHBOARD_TOKEN"
 ```
 
-Both calls require the `approve` capability, and both record `resolved_by_sub` — who decided —
-and emit `approval.resolved`.
+Both calls require the `approve` capability, and both record `resolved_by_sub`, which is who
+decided, and emit `approval.resolved`.
 
 ### Actions and payments resolve differently
 

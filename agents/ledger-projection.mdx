@@ -59,9 +59,9 @@ curl https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/funds \
 | `unprojected_cents` | The gap between the two, floored at zero. |
 
 `unprojected_cents` is the one to understand. It is normally near zero and transiently non-zero
-while projections settle. A persistently growing value means projections are backing up — worth
-an alert, and never a reason to distrust `committed_cents`, which does not depend on the ledger
-at all.
+while projections settle. A persistently growing value means projections are backing up. That is
+worth an alert, and never a reason to distrust `committed_cents`, which does not depend on the
+ledger at all.
 
 ## The projection is never in the authorization path
 
@@ -96,8 +96,8 @@ The ledger comes included on the higher plans and is available as an add-on on t
 **Billing** in the [console](https://app.kordio.io) for what your workspace has today.
 
 Spend control works either way. Without the ledger, decisions, reservations and the audit trail
-all behave exactly as documented — you lose the projected postings and the ledger-side figures on
-[workspace funds](#reading-the-figures), not any part of authorization.
+all behave exactly as documented. What you lose is the projected postings and the ledger-side
+figures on [workspace funds](#reading-the-figures), not any part of authorization.
 
 ## Next steps
 

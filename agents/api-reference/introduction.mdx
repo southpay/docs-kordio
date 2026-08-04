@@ -81,7 +81,7 @@ policy modules paginate by `name` rather than by id.
 | --- | --- | --- |
 | `POST /v1/agent/actions` | `Idempotency-Key` header | `422 idempotency_key_required` |
 | `POST /v1/agent/payment_intents` | `idempotency_key` body field | `400` |
-| Everything else | None | — |
+| Everything else | None | n/a |
 
 Keys are scoped per runtime. A replay returns the original intent and the original decision, at
 the original status.

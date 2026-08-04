@@ -13,8 +13,8 @@ in front of money should be analysable, not Turing-complete.
 ## Your first policy
 
 A policy carries two things: **typed columns** for the common cases, and a general **`rules`
-array** for everything else. The columns are shorthand — they compile into the same rules — so
-use them when they fit.
+array** for everything else. The columns are shorthand that compiles into the same rules, so use
+them when they fit.
 
 ```bash
 curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/policies \
@@ -117,8 +117,8 @@ rejected at write time.
 
 <Note>
   The ordered comparisons (`gt`, `gte`, `lt`, `lte`) are numeric. A non-numeric operand makes
-  the comparison `false` rather than an error — so a typo in a `metadata.*` path silently fails
-  to match rather than blowing up. Use `exists` when you need to distinguish "absent" from
+  the comparison `false` rather than an error, so a typo in a `metadata.*` path silently fails to
+  match rather than blowing up. Use `exists` when you need to distinguish "absent" from
   "false".
 </Note>
 
@@ -195,7 +195,7 @@ against the workspace's real saved modules, so you can preview a draft that buil
 already in place. `session_budget_cents` sets the synthetic session budget and defaults to
 `100000`.
 
-Previewing needs only the `read` capability, deliberately — it is not a mutation.
+Previewing needs only the `read` capability, deliberately: it is not a mutation.
 
 The same evaluation is available to your agent at `POST /v1/agent/actions/simulate`, which does
 record an `action.simulated` audit event.

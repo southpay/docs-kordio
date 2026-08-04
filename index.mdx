@@ -32,7 +32,7 @@ an account, and a set of test-mode credentials, and you can use either one on it
 
 ## The call each one is about
 
-Developers pick faster from a request shape than from a paragraph.
+One call from each, so you can recognise which one you need.
 
 <CodeGroup>
 
@@ -41,7 +41,7 @@ curl -X POST https://api.kordio.io/v1/agent/actions \
   -H "Authorization: Bearer $KORDIO_RUNTIME_KEY" \
   -H "Idempotency-Key: order-4471" \
   -d '{"session_id":"3f1c...","action_type":"payment.create","cost_cents":12000}'
-# → 201 allowed | 202 requires_approval | 403 denied
+# 201 allowed, 202 requires_approval, 403 denied
 ```
 
 ```bash Ledger

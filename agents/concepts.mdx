@@ -44,9 +44,9 @@ time. A signature binds anything that checks it.
 Three **intrinsic rules** always run first. They cannot be disabled and they are not part of
 any policy you write:
 
-1. `session_inactive` — the session must be `active`.
-2. `runtime_scope` — the runtime's key must be scoped for this action type.
-3. `session_budget` — the spend must fit the remaining session budget.
+1. `session_inactive`: the session must be `active`.
+2. `runtime_scope`: the runtime's key must be scoped for this action type.
+3. `session_budget`: the spend must fit the remaining session budget.
 
 Then the rules compiled from each active policy run, oldest policy first, with imported
 modules compiled in ahead of a policy's own rules.
@@ -57,9 +57,9 @@ refuses it outright.
 
 <Warning>
   **A runtime with no active policy denies everything**, with the rule `no_policy`. The
-  intrinsic rules do not count as a policy. This is fail-closed by design — a runtime nobody
-  has written rules for has no authority rather than unlimited authority — and it is the most
-  common surprise in a first integration.
+  intrinsic rules do not count as a policy. This is fail-closed by design: a runtime nobody has
+  written rules for has no authority rather than unlimited authority. It is also the most common
+  surprise in a first integration.
 </Warning>
 
 An `allowlist`-mode policy that matched no `allow` rule denies with `not_allowlisted`. Each
@@ -83,8 +83,8 @@ other value belongs to one or the other.
 
 Full state sets:
 
-- **Action intent** — `pending`, `requires_approval`, `completed`, `failed`, `denied`.
-- **Payment intent** — `pending`, `requires_approval`, `executed`, `settled`, `failed`, `denied`.
+- Action intent: `pending`, `requires_approval`, `completed`, `failed`, `denied`.
+- Payment intent: `pending`, `requires_approval`, `executed`, `settled`, `failed`, `denied`.
 
 ## Why a session and not just a cap
 

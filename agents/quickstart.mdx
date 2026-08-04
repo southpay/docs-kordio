@@ -174,8 +174,8 @@ const res = await fetch("https://api.kordio.io/v1/agent/actions", {
 const body = await res.json();
 switch (res.status) {
   case 201: /* execute, then report in step 5 */ break;
-  case 202: /* held for a person — stop and wait */ break;
-  case 403: /* denied — do not execute */ break;
+  case 202: /* held for a person. stop and wait */ break;
+  case 403: /* denied. do not execute */ break;
 }
 ```
 

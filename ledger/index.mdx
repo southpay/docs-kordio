@@ -25,8 +25,8 @@ usage all use the same four.
 ### Account
 
 A named bucket of value in one currency. You choose the `id` and the `currency`, and both are
-immutable once set. Accounts carry one of five accounting types — `asset`, `liability`,
-`revenue`, `expense`, `equity` — which are informational for reporting.
+immutable once set. Accounts carry one of five accounting types (`asset`, `liability`,
+`revenue`, `expense`, `equity`), which are informational for reporting.
 
 ### Posting
 
@@ -36,8 +36,8 @@ One line of a transaction. It says: this account moved by this amount, in this d
 ### Transaction
 
 A set of postings that move together. The ledger enforces `sum(debits) == sum(credits)` per
-currency, and rejects anything that does not balance. That is the whole correctness model —
-there is no validation of whether a transaction "makes sense", because the balance rule is what
+currency, and rejects anything that does not balance. That is the whole correctness model.
+There is no validation of whether a transaction "makes sense", because the balance rule is what
 makes a double-entry ledger trustworthy.
 
 ### Balance
@@ -56,7 +56,7 @@ stored, and computed from `value_date` rather than insertion time.
 }
 ```
 
-Monetary values cross the wire as JSON strings of integer minor units — [parse them with a
+Monetary values cross the wire as JSON strings of integer minor units. [Parse them with a
 big-integer type](/ledger/concepts#integer-minor-units), never a JS `number`.
 
 ## What makes it safe
@@ -79,8 +79,8 @@ big-integer type](/ledger/concepts#integer-minor-units), never a JS `number`.
 ## Who uses this
 
 Anyone who needs an auditable record of what money meant, separate from whatever moved it.
-Kordio's own spend control is one such customer — agent spend is projected here as balanced
-postings — but the ledger knows nothing about agents. It speaks accounts, postings, transactions
+Kordio's own spend control is one such customer, and agent spend is projected here as balanced
+postings. But the ledger knows nothing about agents. It speaks accounts, postings, transactions
 and balances.
 
 ## Next steps

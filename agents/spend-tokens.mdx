@@ -23,7 +23,7 @@ or a different agent.
 
 A planner decides it will buy one thing from one vendor for at most $200. It mints a token
 pinned to that vendor at that ceiling and hands the token id to whatever does the buying. The
-executor cannot then spend more, spend it twice, or spend it somewhere else — even though it
+executor cannot then spend more, spend it twice, or spend it somewhere else, even though it
 holds a runtime key whose policy would allow all three.
 
 Without the token, the executor's authority is whatever the policy allows for the rest of the
@@ -90,7 +90,7 @@ runs.
 | `spend_token_counterparty` | The token is pinned to a different counterparty. |
 
 If the token passes, normal policy evaluation runs on top. A token for $200 against a policy
-that caps payments at $150 authorizes $150, not $200 — the tighter constraint always wins.
+that caps payments at $150 authorizes $150, not $200. The tighter constraint always wins.
 
 On any non-denied outcome the token is consumed and moves to `status: consumed`. It cannot be
 presented again.
@@ -104,7 +104,7 @@ presented again.
 
 ## Lifecycle
 
-`status` moves through `issued` → `consumed`, or to `expired` when its `expires_at` passes, or
+`status` moves from `issued` to `consumed`, or to `expired` when its `expires_at` passes, or to
 `void`. Expiry is swept in the background and emits both a `spend_token.expired` audit event and
 a `spend_token.expired` webhook, so you can react to a plan that was made and never executed.
 

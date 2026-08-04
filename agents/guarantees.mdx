@@ -7,8 +7,8 @@ keywords: ["fail closed", "no_policy", "reservation", "replay", "append-only"]
 ---
 
 Infrastructure is judged on its failure modes, not its definitions. Each guarantee below is
-written as a property followed by the failure it removes, and the last section is the list of
-things this product does **not** guarantee, which is the part worth reading twice.
+written as a property followed by the failure it removes. The last section lists what this
+product does **not** guarantee.
 
 ## Decisions fail closed
 
@@ -21,8 +21,8 @@ policy-engine deployments is a default-allow gap at setup time. There is none he
 
 ## The first denial wins, and cannot be overridden
 
-Rules are evaluated in a fixed order — intrinsic rules, then each active policy oldest first,
-with imported modules ahead of a policy's own rules. The first denial short-circuits the entire
+Rules are evaluated in a fixed order: intrinsic rules, then each active policy oldest first, with
+imported modules ahead of a policy's own rules. The first denial short-circuits the entire
 evaluation.
 
 *What this removes:* a permissive rule silently re-enabling something a stricter rule refused. An
@@ -91,7 +91,7 @@ ledger at all. The gap is observable as `unprojected_cents` on the workspace fun
 Suspending or revoking a runtime stops new authorizations. It does **not** rewrite decisions
 already made, and it does **not** invalidate a cosignature already issued.
 
-*What this removes:* nothing — this is a limit, stated so you can size it. A cosignature's default
+*What this removes:* nothing. This is a limit, stated so you can size it. A cosignature's default
 lifetime is five minutes, so revoking a compromised runtime leaves at most that window in which
 an already-issued signature still verifies offline. If that window matters to you, verify through
 `POST /v1/cosign/verify` rather than locally: it re-checks the intent's state and will report
@@ -106,8 +106,8 @@ key cannot reach live data.
 
 ## What Kordio does not guarantee
 
-Four things, stated plainly, because a control layer that overclaims is worse than one that
-does not exist.
+A control layer that overclaims is worse than one that does not exist, so here are the four
+limits.
 
 ### It cannot govern a path that does not ask
 
@@ -121,7 +121,7 @@ responsibility, not ours.
 If the authorize call times out, nothing on our side decides what happens next. Your code does.
 
 Fail closed: treat a transport failure as a refusal and do not execute. That is the only choice
-consistent with having a control layer at all — an agent that spends whenever Kordio is
+consistent with having a control layer at all. An agent that spends whenever Kordio is
 unreachable has a control layer exactly as long as the network is up. Retry with the **same**
 idempotency key, which is safe by construction: if the original request did land, you get the
 original decision back rather than a second reservation.
@@ -135,8 +135,8 @@ re-loads the intent and refuses anything already settled.
 ### Simulation is not free of side effects
 
 `POST /v1/agent/actions/simulate` creates no intent and reserves no budget, but it does write an
-`action.simulated` audit event. Policy previews on the dashboard side write nothing at all — use
-those if you need a genuinely silent evaluation.
+`action.simulated` audit event. Policy previews on the dashboard side write nothing at all, so
+use those if you need a genuinely silent evaluation.
 
 ## Next steps
 

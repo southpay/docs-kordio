@@ -36,7 +36,7 @@ A denied decision answers `403` and carries the whole decision, not just a code:
 ### Rules that can refuse
 
 `decision.rule` names what decided. Rules created through the typed policy columns report under
-the column's name, not the underlying kind — see [the mapping
+the column's name, not the underlying kind. See [the mapping
 table](/agents/policies#the-typed-columns-and-the-rule-name-each-produces).
 
 | `decision.rule` | Why |
@@ -76,7 +76,7 @@ Everything that is not a decision returns:
 Switch on `code` where it is present. `message` is for humans and may change.
 
 <Note>
-  `code` is `null` for most validation failures — only the codes below ever set it. Write your
+  `code` is `null` for most validation failures; only the codes below ever set it. Write your
   handler to branch on the HTTP status first and treat `code` as a refinement, not as the
   primary signal.
 </Note>
@@ -85,21 +85,21 @@ Switch on `code` where it is present. `message` is for humans and may change.
 
 ### runtime_key_required
 
-`401` — No runtime key was presented. Send `Authorization: Bearer krt_...`.
+`401` - No runtime key was presented. Send `Authorization: Bearer krt_...`.
 
 ### invalid_runtime_key
 
-`401` — The key was not recognised, or its runtime is suspended or revoked.
+`401` - The key was not recognised, or its runtime is suspended or revoked.
 
 ### insufficient_role
 
-`403` — Your membership does not carry the capability this call requires. Approving needs
+`403` - Your membership does not carry the capability this call requires. Approving needs
 `approve`; writing policy and managing runtimes need `manage_policy`; members and billing need
 `manage_members`.
 
 ### idempotency_key_required
 
-`422` — `POST /v1/agent/actions` requires an `Idempotency-Key` **header**. Note the status: this
+`422` - `POST /v1/agent/actions` requires an `Idempotency-Key` **header**. Note the status: this
 is a `422`, not a `400`.
 
 <Warning>
@@ -110,40 +110,40 @@ is a `422`, not a `400`.
 
 ### authorization_required
 
-`400` — `POST /v1/cosign/verify` was called with no token, in neither the `authorization` body
+`400` - `POST /v1/cosign/verify` was called with no token, in neither the `authorization` body
 field nor an `Authorization` header.
 
 ### rate_limited
 
-`429` — Back off per the `Retry-After` header. Agent endpoints allow 1200 requests per minute
+`429` - Back off per the `Retry-After` header. Agent endpoints allow 1200 requests per minute
 per key; workspace endpoints allow 300.
 
 ### live_provider_unavailable
 
-`503` — A live payment provider could not be reached. The decision stands and the reservation is
+`503` - A live payment provider could not be reached. The decision stands and the reservation is
 held; retry the execution rather than re-authorizing.
 
 ### identity_unavailable
 
-`503` — The identity provider could not be reached during sign-in.
+`503` - The identity provider could not be reached during sign-in.
 
 ### identity_not_configured
 
-`503` — This deployment has no identity provider configured.
+`503` - This deployment has no identity provider configured.
 
 ### mfa_required
 
-`401` — Sign-in needs a second factor. The response carries `pending_authentication_token` and
+`401` - Sign-in needs a second factor. The response carries `pending_authentication_token` and
 `authentication_challenge_id` alongside `error`; complete at `POST /v1/auth/verify_mfa`.
 
 ### email_verification_required
 
-`401` — The account exists but its email is unverified. The response carries
+`401` - The account exists but its email is unverified. The response carries
 `pending_authentication_token`; complete at `POST /v1/auth/verify_email`.
 
 ### invalid_signature
 
-`401` — An inbound billing webhook failed HMAC verification.
+`401` - An inbound billing webhook failed HMAC verification.
 
 ## Statuses without a code
 

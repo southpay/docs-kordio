@@ -301,7 +301,8 @@ paths:
       operationId: completeAction
       summary: Report success
       description: |
-        The action succeeded. Settles the reservation and moves the intent `pending → completed`.
+        The action succeeded. Settles the reservation and moves the intent from `pending` to
+        `completed`.
 
         Reporting is not optional. An intent left `pending` holds its budget until the
         session closes.
@@ -336,7 +337,7 @@ paths:
       summary: Report failure
       description: >-
         The action failed. Releases the reservation back to the session budget and moves
-        the intent `pending | requires_approval → failed`.
+        the intent from `pending` or `requires_approval` to `failed`.
       security:
         - RuntimeKey: []
       parameters:
@@ -1772,8 +1773,9 @@ paths:
       description: |
         Requires the `approve` capability.
 
-        Moves the intent `requires_approval → pending`. It does **not** execute anything —
-        the agent still executes and still reports the outcome with `complete` or `fail`.
+        Moves the intent from `requires_approval` to `pending`. It does **not** execute
+        anything. The agent still executes and still reports the outcome with `complete` or
+        `fail`.
 
         Records `resolved_by_sub` and emits `approval.resolved`.
       security:
@@ -2011,7 +2013,7 @@ paths:
       summary: List audit events
       description: |
         The append-only record of everything the control layer did. Every role can read it,
-        including `member` — an audit trail only some people can see is not much of one.
+        including `member`. An audit trail only some people can see is not much of one.
 
         Filter by `trace_id` to pull the whole story of one action across authorization,
         approval and outcome.
