@@ -6,9 +6,9 @@ icon: "link"
 keywords: ["funds", "unprojected_cents", "ledger_ready", "spend:", "projection"]
 ---
 
-Every reservation the control layer takes is mirrored into a double-entry ledger, so decisions
-become balanced postings your finance team can reconcile. You do not write those postings and
-you do not need to read the ledger docs to use spend control.
+When your workspace has the ledger, every reservation the control layer takes is mirrored into it,
+so decisions become balanced postings your finance team can reconcile. You do not write those
+postings and you do not need to read the ledger docs to use spend control.
 
 The result is that agent spend arrives pre-reconciled: "what did this agent spend last month" is
 a balance query, not an archaeology project across application logs.
@@ -90,10 +90,14 @@ Two things are worth knowing before you query them:
   balances. `spend:{runtime_id}` is just an account id we chose; no ledger code path treats it
   specially.
 
-## One plan, both APIs
+## Availability
 
-The ledger is not sold separately and is not metered separately. Every tier includes it, and
-nothing about the projection depends on your plan.
+The ledger comes included on the higher plans and is available as an add-on on the rest. Check
+**Billing** in the [console](https://app.kordio.io) for what your workspace has today.
+
+Spend control works either way. Without the ledger, decisions, reservations and the audit trail
+all behave exactly as documented — you lose the projected postings and the ledger-side figures on
+[workspace funds](#reading-the-figures), not any part of authorization.
 
 ## Next steps
 

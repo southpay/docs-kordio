@@ -80,11 +80,11 @@ Every role can read the audit trail, including `member`.
 
 ## The ledger is never in the authorization path
 
-Reservations are mirrored into the ledger asynchronously.
+Where a workspace has the ledger, reservations are mirrored into it asynchronously.
 
-*What this removes:* a slow or unavailable ledger delaying or changing a decision. A projection
-can lag; it can never gate. The gap is observable as `unprojected_cents` on the workspace funds
-endpoint.
+*What this removes:* a slow, unavailable, or absent ledger delaying or changing a decision. A
+projection can lag; it can never gate. Authorization behaves identically on a workspace with no
+ledger at all. The gap is observable as `unprojected_cents` on the workspace funds endpoint.
 
 ## Revocation is not retroactive
 
