@@ -3590,7 +3590,7 @@ components:
           type: object
           description: >-
             Per-dimension `{limit, used, remaining}` for agents, members,
-            payment_authorizations, action_authorizations and authorized_volume, plus
+            payment_authorizations, action_authorizations and gated_volume, plus
             `live_mode`, `overage_cents`, `audit_retention_days` and the period bounds.
           additionalProperties: true
         prepaid:

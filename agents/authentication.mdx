@@ -212,7 +212,7 @@ inside your own executor, before any money is at stake.
 
 <Note>
   Control-plane responses carry no `livemode` field. The mode is a property of the agent, so
-  read it from `GET /v1/workspaces/{slug}/agents/{id}`, or from `runtime_mode` inside a
+  read it from `GET /v1/workspaces/{slug}/agents/{id}`, or from `agent_mode` inside a
   decision. The ledger API does echo `livemode` on every response; the two APIs differ here.
 </Note>
 

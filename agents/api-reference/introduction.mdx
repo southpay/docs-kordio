@@ -20,11 +20,11 @@ https://api.kordio.io
 
 | Prefix | Credential | Used by |
 | --- | --- | --- |
-| `/v1/agent/*` | Runtime key, `krt_live_…` or `krt_test_…` | Your agent |
+| `/v1/agent/*` | Agent key, `krt_live_…` or `krt_test_…` | Your agent |
 | `/v1/workspaces/{slug}/*` | Identity bearer token | A person or your backend |
 | `/v1/cosign/verify`, `/.well-known/jwks.json` | None | Anyone verifying a signature |
 
-A runtime key can never write policy, and a dashboard token can never authorize an action as an
+An agent key can never write policy, and a dashboard token can never authorize an action as an
 agent. See [authentication](/agents/authentication).
 
 ## Response envelope
@@ -83,7 +83,7 @@ policy modules paginate by `name` rather than by id.
 | `POST /v1/agent/payment_intents` | `idempotency_key` body field | `400` |
 | Everything else | None | n/a |
 
-Keys are scoped per runtime. A replay returns the original intent and the original decision, at
+Keys are scoped per agent. A replay returns the original intent and the original decision, at
 the original status.
 
 ## Errors

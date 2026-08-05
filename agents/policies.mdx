@@ -76,7 +76,7 @@ agent is waiting on an answer.
 </Note>
 
 Window rules count both action intents in `pending`, `requires_approval` or `completed`, and
-payment intents in `pending`, `requires_approval`, `executed` or `settled`. Spend on one
+payment intents in `pending`, `requires_approval` or `executed`. Spend on one
 consumes the other's headroom.
 
 ## The condition language
@@ -107,7 +107,7 @@ consumes the other's headroom.
 `any_of` is rejected at write time.
 
 **Fields** are `action_type`, `resource`, `cost_cents`, `currency`, `agent_id`,
-`runtime_mode`, `budget_id`, and any `metadata.*` dot path.
+`agent_mode`, `budget_id`, and any `metadata.*` dot path.
 
 **Operators** are `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `not_in`, `contains`,
 `starts_with`, `ends_with`, `exists`.
