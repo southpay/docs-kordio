@@ -186,3 +186,24 @@ authorized to execute", never as "authorized without a signature".
     The verify endpoint and the JWKS document.
   </Card>
 </CardGroup>
+
+## Spending it
+
+`POST /v1/cosign/verify` answers whether authority exists and does not change anything, so a
+relying party can ask twice without being punished for checking.
+
+`POST /v1/cosign/consume` spends it. The first call returns the same body as verify; every call
+after it returns `already_consumed`, and verify reports `already_consumed` from then on too.
+
+Use consume at the moment you act on the decision, not when you receive it. A cosignature is
+otherwise replayable until the executor reports the action finished, and for a counterparty
+"valid" means pay.
+
+```bash
+curl -X POST https://api.kordio.io/v1/cosign/consume \
+  -H "Content-Type: application/json" \
+  -d '{"authorization":"'"$COSIGNATURE"'","consumed_by":"acme-executor"}'
+```
+
+`consumed_by` is optional and recorded against the workspace, so a dispute can name who spent it.
+

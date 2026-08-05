@@ -2890,6 +2890,7 @@ components:
                 - invalid_identity_token
                 - budget_ceiling
                 - parent_budget_exhausted
+                - already_consumed
                 - idempotency_conflict
                 - insufficient_role
                 - idempotency_key_required
