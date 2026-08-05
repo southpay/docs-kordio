@@ -101,6 +101,18 @@ keys do not reach these routes; send a WorkOS access token.
 `401` - The dashboard token was rejected: malformed, expired, or signed by something this
 environment does not trust.
 
+### budget_ceiling
+
+`422` - The budget asked for is larger than the agent's `max_budget_cents`, which is set from
+the dashboard and cannot be raised with an agent key. The body carries `ceiling_cents` and
+`requested_cents` so the caller can open a smaller one rather than guess.
+
+### parent_budget_exhausted
+
+`422` - A child budget was asked for that is larger than the parent has left. Children reserve
+from their parent when they are opened, so several children cannot sum past it. `ceiling_cents`
+is what the parent actually has left.
+
 ### insufficient_role
 
 `403` - Your membership does not carry the capability this call requires. Approving needs

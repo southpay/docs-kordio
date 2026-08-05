@@ -397,7 +397,11 @@ paths:
                 budget_cents:
                   type: integer
                   minimum: 1
-                  description: The ceiling for this run, in minor units.
+                  description: >-
+                    The ceiling for this run, in minor units. Refused with
+                    `budget_ceiling` if it exceeds the agent's
+                    `max_budget_cents`, and with `parent_budget_exhausted` if a
+                    parent is named and has less than this left.
                   example: 50000
                 currency:
                   type: string
@@ -2884,6 +2888,8 @@ components:
                 - invalid_runtime_key
                 - identity_token_required
                 - invalid_identity_token
+                - budget_ceiling
+                - parent_budget_exhausted
                 - idempotency_conflict
                 - insufficient_role
                 - idempotency_key_required
@@ -3130,6 +3136,14 @@ components:
     Agent:
       type: object
       properties:
+        max_budget_cents:
+          type: integer
+          nullable: true
+          description: >-
+            The largest budget this agent may open, in minor units. Set from the
+            dashboard only. Null means the agent chooses its own, which is the
+            default for agents created before ceilings existed.
+          example: 50000
         id: { type: string, format: uuid }
         name: { type: string }
         status:

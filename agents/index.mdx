@@ -34,7 +34,10 @@ agents are unlimited on every paid plan.
 ### Budget
 
 A budget envelope for one run. Spend is committed against it, and it is the unit that stops a
-loop rather than a single mistake. Budgets can delegate to child budgets.
+loop rather than a single mistake. How large a budget an agent may open is capped by the
+agent's `max_budget_cents`, which is set from the dashboard and cannot be raised with an agent
+key. Budgets delegate to child budgets, and a child reserves from its parent when it opens, so
+children cannot sum past what the parent has left.
 
 ### Policy
 
