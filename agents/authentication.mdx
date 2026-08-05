@@ -10,16 +10,6 @@ Spend control has two callers and they authenticate differently, because they ar
 differently. An agent able to widen its own limits is not governed by them, so the separation
 is the point rather than a formality.
 
-<Note>
-  **If you integrated before this page said agent and budget.** What used to be called a
-  runtime is an agent, and what used to be called a session is a budget. Nothing you have
-  deployed needs changing: `POST /v1/agent/sessions` still opens a budget, `session_id` is
-  still accepted wherever `budget_id` is, and every response carries `runtime_id` and
-  `session_id` next to `agent_id` and `budget_id`. Policy conditions written against
-  `runtime_id` or `session_id` keep matching, and always will. Only the names in this
-  documentation moved.
-</Note>
-
 | Caller | Credential | Reaches |
 | --- | --- | --- |
 | An **agent**, asking whether it may act | Agent API key, `krt_…` | `/v1/agent/*` |
