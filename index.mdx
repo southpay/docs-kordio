@@ -67,18 +67,19 @@ The most common way to arrive here is holding a string somebody else generated.
 
 ## Using both?
 
-Start with spend control. Where a workspace has both, every reservation it takes is mirrored into
-the ledger as balanced postings, so agent spend arrives pre-reconciled. Each workspace owns its
-books and each runtime owns an account inside them. You do not write those postings yourself, and
-you do not need to read the ledger docs to ship the control layer.
+Start with spend control. Every reservation it takes is mirrored into the ledger as balanced
+postings, so agent spend arrives pre-reconciled. Each workspace owns its books and each runtime
+owns an account inside them. You do not write those postings yourself, and you do not need to
+read the ledger docs to ship the control layer.
 
-The control layer decides what may happen; the ledger records what did. Each is a complete
-API on its own. The control layer just happens to be the ledger's first customer.
+The control layer decides what may happen; the ledger records what did. They are two API
+surfaces with their own authentication, which is why they have their own reference sections,
+but they are one product at one price.
 
 <Info>
-  **How the ledger is packaged.** It comes included on the higher plans, and is available as an
-  add-on on the rest. Check **Billing** in the [console](https://app.kordio.io) for what your
-  workspace has today.
+  **How the ledger is packaged.** It is included in every tier and is not sold separately, so
+  one price covers the control layer and the books underneath it. Check **Billing** in the
+  [console](https://app.kordio.io) for what your workspace has today.
 </Info>
 
 ## New to the problem, not the API?

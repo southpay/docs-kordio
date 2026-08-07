@@ -1,9 +1,9 @@
 ---
 title: "Where Kordio fits"
 sidebarTitle: "Positioning"
-description: "Who each half of Kordio is for, and where the boundary sits."
+description: "What Kordio is, what sits underneath it, and whether you need it."
 icon: "map"
-keywords: ["control layer", "ledger", "agent spend"]
+keywords: ["control layer", "agent spend", "ledger"]
 ---
 
 Give an agent a credential and it can spend. Nothing between it and the rail asks whether it
@@ -17,24 +17,31 @@ neither was ever told what this agent is for.
   whether it can be bypassed, and whether it can prove what it permitted.
 </Info>
 
-## Two products, one host
+## What Kordio is
 
-**Spend control** is the thing that is told. Before the agent pays a vendor or calls a paid
-tool, it asks, and gets an answer in the same request: allowed, needs a person, or denied,
-naming the rule that decided. Allowed answers come back signed, so whatever executes can
-verify the authority instead of trusting the agent that carries it. Kordio holds no funds, no
-accounts, and none of your credentials.
+Kordio is the control layer for AI agents that spend. Before the agent pays a vendor or calls
+a paid tool, it asks, and gets an answer in the same request: allowed, needs a person, or
+denied, naming the rule that decided and reporting the headroom left on every limit. Allowed
+answers come back signed, so whatever executes can verify the authority instead of trusting
+the agent that carries it. Kordio holds no funds, no accounts, and none of your credentials.
+It is a required signer, never a custodian.
 
-**The ledger** is a programmable double-entry system of record. Accounts, balanced postings,
-derived balances, point-in-time history, and reconciliation as a first-class operation. It
-stands entirely on its own, and plenty of teams want it for reasons that have nothing to do
-with agents.
+The same engine governs any action type, not only payments. An action type is a dotted string
+like `payment.create` or `tool.invoke`, and a runtime's caps, windows and allowlists apply
+across all of them together, so spend on one consumes headroom for the other.
 
-The control layer decides what may happen; the ledger records what did. Each is a complete
-API on its own. The control layer just happens to be the ledger's first customer, which is
-the reason to trust both: the ledger is general enough that a real product was built on it
-without special-casing, and the control layer's books are the real thing rather than an audit
-log wearing accounting vocabulary.
+## The ledger underneath
+
+Every decision the control layer takes is mirrored as balanced postings in a double-entry
+ledger: accounts, derived balances, point-in-time history, and reconciliation as a
+first-class operation. The control layer decides what may happen, and the ledger records what
+did.
+
+It is included in every tier rather than sold separately, so there is one price for the
+control layer and the books underneath it. It is also a real general-purpose ledger rather
+than an audit log wearing accounting vocabulary, and you can use it directly. The projection
+never sits in the authorization path, so the ledger being slow cannot delay or change a
+decision.
 
 ## Is this for you?
 
@@ -43,13 +50,12 @@ supplies, booking freight, managing ad budget, or just burning through model and
 at a rate nobody predicted. You want a rule that runs before the money moves and a record
 afterwards that names what permitted it. That is [spend control](/agents/why).
 
-**Yes, separately, if you need an auditable money system of record.** A treasury product, a
+**Yes, if you also need an auditable money system of record.** A treasury product, a
 marketplace splitting funds, an FX desk, a SaaS company billing its own usage. That is the
-[ledger](/ledger/why), which comes included on the higher plans and is available as an add-on on
-the rest.
+[ledger](/ledger/why), and it comes with every tier at no extra price.
 
 **No, if you only need bookkeeping for your own company's taxes and statements.** That is
-what accounting software is for. Reach for QuickBooks or Xero.
+what accounting software is for.
 
 ## Next steps
 
