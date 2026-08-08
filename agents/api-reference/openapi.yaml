@@ -48,7 +48,7 @@ tags:
       presents later on a payment. Agent key.
   - name: Payment intents
     description: >-
-      Authorize and execute a payment in one call. Agent key.
+      Authorize a payment. You settle it and report back. Agent key.
   - name: Cosignatures
     description: Verify a signed authorization. Unauthenticated.
   - name: Agents
@@ -520,7 +520,7 @@ paths:
     post:
       tags: [Payment intents]
       operationId: createPaymentIntent
-      summary: Authorize and execute a payment
+      summary: Authorize a payment
       description: |
         Evaluated as the action type `payment.create` with the counterparty as its
         resource, so an agent's caps, windows and allowlists apply across payments and
@@ -617,8 +617,8 @@ paths:
                 cosignature: eyJhbGciOiJFUzI1NiIsImtpZCI6ImtleV8xIiwidHlwIjoiSldUIn0
         '202':
           description: >-
-            `requires_approval`. Nothing was executed. Resolving the approval is what
-            executes it.
+            `requires_approval`. Nothing has moved. Approving returns the intent to
+            `pending` for you to settle and report; denying releases the reservation.
           content:
             application/json:
               schema:
@@ -785,6 +785,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
+  /v1/cosign/consume:
+    post:
+      tags: [Cosignatures]
+      operationId: consumeCosignature
+      summary: Verify a cosignature and spend it
+      description: |
+        Unauthenticated. Does everything `verify` does, and then marks the authority spent
+        so the same cosignature cannot be presented twice.
+
+        Use this when you are the executor and you are about to act. `verify` answers "is
+        this good?"; `consume` answers "is this good, and it is mine now". A second call
+        with the same cosignature reports `already_settled`.
+
+        Send the token either as the body field `authorization` or as an
+        `Authorization: Bearer <jwt>` header.
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                authorization:
+                  type: string
+                  description: The cosignature JWT. May be sent as a bearer header instead.
+                consumed_by:
+                  type: string
+                  description: >-
+                    Optional label for whoever spent it, recorded on the consumption.
+      responses:
+        '200':
+          description: The signature was valid and the authority is now spent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CosignatureVerificationValid'
+        '400':
+          description: No cosignature was supplied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: >-
+            The cosignature did not verify, or the authority was already spent. `reason`
+            says which.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CosignatureVerificationInvalid'
 
   /v1/cosign/verify:
     post:
@@ -3472,14 +3532,14 @@ components:
           description: >-
             False when the ledger is disabled, the workspace has no ledger, or the call
             failed. The control-plane figures above stay correct either way.
-        accounts:
+        by_agent:
           type: array
           items:
             type: object
             properties:
-              account_id: { type: string, example: "spend:7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2" }
               agent_id: { type: string, format: uuid }
               agent_name: { type: string }
+              ledger_account: { type: string, example: "spend:7d2a6c15-3f89-4b02-9e64-8a15d7c0b3f2" }
               committed_cents: { type: integer }
               held_cents: { type: integer }
               currency: { type: string }
