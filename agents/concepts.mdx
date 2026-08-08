@@ -107,16 +107,22 @@ to the tightest value per key.
 Give it to your agent. An agent that knows it has $380 left on the budget picks a cheaper
 vendor; an agent that only knows it was refused retries into the same wall.
 
-## Payments are not actions
+## Payments work like actions
 
-`POST /v1/agent/payment_intents` is a separate resource from `POST /v1/agent/actions`, and it
-differs in three ways that will bite you if you assume symmetry.
+`POST /v1/agent/payment_intents` is a separate resource from `POST /v1/agent/actions`, but it
+behaves the same way: Kordio authorizes, you execute, you report back. It holds no funds and
+moves no money, so there is nothing it could execute on your behalf.
+
+One difference remains, and it will bite you if you assume symmetry.
 
 | | `/v1/agent/actions` | `/v1/agent/payment_intents` |
 | --- | --- | --- |
 | Idempotency | `Idempotency-Key` **header**, missing is `422` | `idempotency_key` **body field**, missing is `400` |
-| On `allowed` | `state: pending`, you execute | Executed in-request, `state: executed` or `failed` |
-| Reporting | You must call `complete` or `fail` | Nothing to report |
+| On `allowed` | `state: pending`, you execute | `state: pending`, you execute |
+| Reporting | You must call `complete` or `fail` | You must call `complete` or `fail` |
+
+The terminal success state differs in name only: an action ends `completed`, a payment ends
+`executed`. Both mean the same thing, that you told us the work went through.
 
 A payment is still evaluated as the action type `payment.create` with the counterparty as its
 resource, so an agent's caps, windows and allowlists apply across payments and other actions

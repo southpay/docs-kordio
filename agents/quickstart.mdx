@@ -263,9 +263,10 @@ Skipping this step is the most common integration mistake. An action that is nev
 or failed holds its budget until the budget closes.
 
 <Note>
-  Payments are the exception. `POST /v1/agent/payment_intents` executes in the same request, so
-  an allowed payment comes back already `executed` and there is nothing to report. See [the
-  payments section](/agents/concepts#payments-are-not-actions).
+  Payments report the same way, through
+  `POST /v1/agent/payment_intents/:id/complete` and `/fail`. Kordio authorizes the spend and
+  hands you a cosignature; your own rail moves the money. See [the payments
+  section](/agents/concepts#payments-work-like-actions).
 </Note>
 
 ## 6. Try it without spending anything

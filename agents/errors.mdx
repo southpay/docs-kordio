@@ -3,7 +3,7 @@ title: "Errors"
 sidebarTitle: "Errors"
 description: "Every code spend control returns, and every rule that can refuse."
 icon: "triangle-alert"
-keywords: ["idempotency_key_required", "insufficient_role", "no_policy", "live_provider_unavailable"]
+keywords: ["idempotency_key_required", "insufficient_role", "no_policy", "billing_unavailable"]
 ---
 
 Spend control has two kinds of failure and they are not the same thing. A **refusal** is a
@@ -139,11 +139,6 @@ field nor an `Authorization` header.
 
 `429` - Back off per the `Retry-After` header. Agent endpoints allow 1200 requests per minute
 per key; workspace endpoints allow 300.
-
-### live_provider_unavailable
-
-`503` - A live payment provider could not be reached. The decision stands and the reservation is
-held; retry the execution rather than re-authorizing.
 
 ### identity_unavailable
 

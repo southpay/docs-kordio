@@ -62,7 +62,7 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/webhook_endpo
 | `action.completed` | An agent reported an authorized action succeeded. |
 | `action.failed` | An agent reported it failed; the reservation is released. |
 | `payment.requires_approval` | A payment is held for a person. |
-| `payment.executed` | A payment was carried out by the provider. |
+| `payment.executed` | An agent reported an authorized payment went through. |
 | `payment.failed` | A payment failed; the reservation is released. |
 | `approval.resolved` | A person approved or denied. On the payment path the payload carries `resolution`. |
 | `budget.low` | A budget dropped to 10% or less of its budget after an executed payment. |

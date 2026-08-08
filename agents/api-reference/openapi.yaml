@@ -526,14 +526,15 @@ paths:
         resource, so an agent's caps, windows and allowlists apply across payments and
         other actions together. Spend on one consumes headroom for the other.
 
-        Two differences from `POST /v1/agent/actions` that will bite you if you assume
+        One difference from `POST /v1/agent/actions` that will bite you if you assume
         symmetry:
 
         - **Idempotency is a body field here**, `idempotency_key`, not the
           `Idempotency-Key` header. A missing one is a `400`, not a `422`.
-        - **An allowed payment is executed synchronously, in this request.** The returned
-          `state` is already `executed` or `failed`, not `pending`. There is no `complete`
-          call to make.
+
+        Kordio authorizes the payment; it never moves the money. An allowed payment comes
+        back `pending` with a cosignature. Settle it on your own rail, then report the
+        outcome with `complete` or `fail`.
       security:
         - AgentKey: []
       requestBody:
@@ -594,8 +595,7 @@ paths:
                   amount_cents: 12000
                   currency: USD
                   counterparty: acme-supplies.example
-                  state: executed
-                  provider: sandbox
+                  state: pending
                   failure_reason: null
                   idempotency_key: order-4471-attempt-1
                   created_at: "2026-08-04T09:12:04Z"
@@ -636,25 +636,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '503':
-          description: >-
-            A live payment provider could not be reached. The decision stands and the
-            reservation is held; retry the execution rather than re-authorizing.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                error:
-                  message: Live payment provider is unavailable
-                  code: live_provider_unavailable
 
   /v1/agent/payment_intents/simulate:
     post:
       tags: [Payment intents]
       operationId: simulatePaymentIntent
       summary: Simulate a payment
-      description: Evaluates without reserving, recording, or executing. Always `200`.
+      description: Evaluates without reserving or recording anything. Always `200`.
       security:
         - AgentKey: []
       requestBody:
@@ -711,6 +699,84 @@ paths:
           $ref: '#/components/responses/AgentUnauthorized'
         '404':
           $ref: '#/components/responses/NotFoundForAgent'
+
+  /v1/agent/payment_intents/{id}/complete:
+    post:
+      tags: [Payment intents]
+      operationId: completePaymentIntent
+      summary: Report that the money moved
+      description: |
+        Your rail settled the payment. Moves the intent from `pending` to `executed` and
+        keeps the reservation spent.
+
+        Reporting is not optional. An intent left `pending` holds its budget until the
+        budget closes.
+      security:
+        - AgentKey: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: The executed intent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentIntentEnvelope'
+        '401':
+          $ref: '#/components/responses/AgentUnauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundForAgent'
+        '422':
+          description: >-
+            The intent is not in a state that can be settled. Only `pending` intents
+            settle, so a payment still held for a person is refused here.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/agent/payment_intents/{id}/fail:
+    post:
+      tags: [Payment intents]
+      operationId: failPaymentIntent
+      summary: Report that it did not
+      description: >-
+        Your rail refused or errored. Moves the intent to `failed` and releases the
+        reservation back to the budget.
+      security:
+        - AgentKey: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: >-
+                    Your own description of what went wrong. Stored verbatim as
+                    `failure_reason`. Defaults to `execution_failed`.
+                  example: rail_declined
+      responses:
+        '200':
+          description: The failed intent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentIntentEnvelope'
+        '401':
+          $ref: '#/components/responses/AgentUnauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundForAgent'
+        '422':
+          description: The intent is not in a state that can be failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /v1/cosign/verify:
     post:
@@ -1940,9 +2006,8 @@ paths:
       description: |
         Requires `approve`.
 
-        Unlike approving an action intent, this **executes the payment synchronously**
-        through the provider. The returned `state` is already `executed` or `failed`. There
-        is nothing further for the agent to do.
+        This grants authority; it does not move money. The intent returns to `pending` and
+        the agent settles it on its own rail, exactly as it does for an approved action.
       security:
         - IdentityToken: []
       parameters:
@@ -1950,7 +2015,7 @@ paths:
         - $ref: '#/components/parameters/PathId'
       responses:
         '200':
-          description: The executed (or failed) payment intent.
+          description: The released payment intent, now `pending`.
           content:
             application/json:
               schema:
@@ -1961,12 +2026,6 @@ paths:
           $ref: '#/components/responses/WorkspaceNotFound'
         '422':
           description: The intent is not in `requires_approval`.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '503':
-          description: The live payment provider is unavailable.
           content:
             application/json:
               schema:
@@ -2896,7 +2955,7 @@ components:
                 - idempotency_key_required
                 - authorization_required
                 - rate_limited
-                - live_provider_unavailable
+                - billing_unavailable
                 - invalid_signature
                 - identity_unavailable
                 - identity_not_configured
@@ -3060,7 +3119,6 @@ components:
         state:
           type: string
           enum: [pending, requires_approval, executed, failed, denied]
-        provider: { type: string, nullable: true }
         failure_reason: { type: string, nullable: true }
         resolved_by_sub: { type: string, nullable: true }
         resolved_at: { type: string, format: date-time, nullable: true }

@@ -117,16 +117,15 @@ curl -X POST \
 Both calls require the `approve` capability, and both record `resolved_by_sub`, which is who
 decided, and emit `approval.resolved`.
 
-### Actions and payments resolve differently
-
-This asymmetry is the one to get right:
+### Actions and payments resolve the same way
 
 | | Action intent | Payment intent |
 | --- | --- | --- |
-| **Approved** | Moves to `pending`. Your agent proceeds as it would have on a `201`, then reports with `complete` or `fail`. | **Executed immediately**, in the approve request. Comes back `executed` or `failed`. Nothing left for the agent to do. |
+| **Approved** | Moves to `pending`. Your agent proceeds as it would have on a `201`, then reports with `complete` or `fail`. | Moves to `pending`. Your agent settles on its own rail, then reports with `complete` or `fail`. |
 | **Denied** | Moves to `denied`, reservation released. | Moves to `denied`, reservation released, ledger release enqueued. |
 
-Approving an action grants authority. Approving a payment *is* the execution.
+Approving grants authority. It never moves money: an approved payment is still waiting on your
+agent to execute it and say what happened.
 
 <Warning>
   A denial is not a rate limit. Do not re-ask with a fresh idempotency key. If your agent
