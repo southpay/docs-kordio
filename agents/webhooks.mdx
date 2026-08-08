@@ -56,6 +56,10 @@ curl -X POST https://api.kordio.io/v1/workspaces/$KORDIO_WORKSPACE/webhook_endpo
 
 ## Event types
 
+A payment fires both spellings. Anything whose `action_type` starts with `payment.` emits the
+`payment.*` event and its `action.*` equivalent, whichever endpoint booked it, so an endpoint
+subscribed to either name hears about it.
+
 | Type | Fires when |
 | --- | --- |
 | `action.requires_approval` | A rule held an action for a person. **The one to subscribe to.** |

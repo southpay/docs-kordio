@@ -576,11 +576,19 @@ paths:
                   additionalProperties: true
                   description: >-
                     Free-form context stored with the intent and echoed back, with the
-                    decision merged in under the key `decision`.
+                    decision merged in under the key `decision`. Provenance only: policy
+                    never reads it. Put anything a rule must evaluate in `metadata`.
+                metadata:
+                  type: object
+                  additionalProperties: true
+                  description: >-
+                    Facts the policy engine evaluates, reachable in a rule as
+                    `metadata.<key>` with dot paths for nested values. Same field, same
+                    meaning, as on `POST /v1/agent/actions`.
       responses:
         '201':
           description: >-
-            `allowed` and already executed. Check `state` for `executed` or `failed`.
+            `allowed`. The payment is `pending` until you settle it and report back.
           content:
             application/json:
               schema:

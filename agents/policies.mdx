@@ -109,6 +109,12 @@ consumes the other's headroom.
 **Fields** are `action_type`, `resource`, `cost_cents`, `currency`, `agent_id`,
 `agent_mode`, `budget_id`, and any `metadata.*` dot path.
 
+A `metadata.*` rule reads the `metadata` object on the request, on both
+`POST /v1/agent/actions` and `POST /v1/agent/payment_intents`. On the payment endpoint
+`decision_context` is provenance and is never evaluated, so send anything a rule must see as
+`metadata`. A payment is evaluated as `action_type` `payment.create` with the counterparty as
+its `resource`, so the same rule covers both endpoints.
+
 **Operators** are `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `not_in`, `contains`,
 `starts_with`, `ends_with`, `exists`.
 
