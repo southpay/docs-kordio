@@ -3,7 +3,7 @@ title: "Where Kordio fits"
 sidebarTitle: "Positioning"
 description: "What Kordio is, what sits underneath it, and whether you need it."
 icon: "map"
-keywords: ["control layer", "agent spend", "ledger"]
+keywords: ["control layer", "agent spend", "agentic commerce", "marketplaces", "ledger"]
 ---
 
 Give an agent a credential and it can spend. Nothing between it and the rail asks whether it
@@ -19,15 +19,17 @@ neither was ever told what this agent is for.
 
 ## What Kordio is
 
-Kordio is the control layer for AI agents that spend. Before the agent pays a vendor or calls
-a paid tool, it asks, and gets an answer in the same request: allowed, needs a person, or
-denied, naming the rule that decided and reporting the headroom left on every limit. Allowed
+Kordio is the control layer for AI agents that transact. Before the agent pays a vendor, buys
+on a marketplace, books a trip, or calls a paid tool, it asks, and gets an answer in the same
+request: allowed, needs a person, or denied, naming the rule that decided and reporting the headroom left on every limit. Allowed
 answers come back signed, so whatever executes can verify the authority instead of trusting
 the agent that carries it. Kordio holds no funds, no accounts, and none of your credentials.
 It is a required signer, never a custodian.
 
-The same engine governs any action type, not only payments. An action type is a dotted string
-like `payment.create` or `tool.invoke`, and a runtime's caps, windows and allowlists apply
+The same engine governs any action type, not only payments, and it is not tied to a payment
+rail. An action type is a dotted string like `payment.create`, `order.place`, `booking.create`
+or `tool.invoke`. Kordio never executes any of them, so nothing in the model assumes a card, a
+bank, a chain, or a marketplace on the other side. A runtime's caps, windows and allowlists apply
 across all of them together, so spend on one consumes headroom for the other.
 
 ## The ledger underneath
